@@ -1,5 +1,6 @@
 # Arquivo onde será desenvolvido o receptor do sistema de comunicação
 import numpy as np
+from transmissor import Transmitter
 
 class Receptor:
     def __init__(self, config):
@@ -81,3 +82,25 @@ class Receptor:
                 bits.append("0")
 
         return ''.join(bits)
+
+################################################################################
+# Desenquadramentos
+################################################################################
+
+    def chCountDeframing(self, frames):
+        """
+        Desenquadra os frames por contagem de caracteres
+        Recebe uma lista de frames, onde cada frame é uma lista de bits
+        Retorna o trem de bits desenquadrado
+        """
+        bitStream = []
+        for frame in frames:
+            # Seleciona os 6 primeiros bits do quadro, converte para string e depois para inteiro
+            # Esses 6 bits representam o tamanho do frame
+            frame_size = int(''.join(map(str, frame[:6])), 2)
+            # Seleciona os próximos bits do quadro, que são os dados reais
+            data_bits = frame[6:6 + frame_size]
+            # Adiciona os bits de dados (data_bits) na lista bitStream
+            bitStream.extend(data_bits)
+        # Converte a lista de bits para uma string de bits
+        return ''.join(map(str, bitStream))
