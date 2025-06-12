@@ -1,6 +1,5 @@
 # Arquivo onde será desenvolvido o receptor do sistema de comunicação
 import numpy as np
-from transmissor import Transmitter
 
 class Receptor:
     def __init__(self, config):
