@@ -86,7 +86,7 @@ class Receptor:
 # Desenquadramentos
 ################################################################################
 
-    def chCountDeframing(self, frames):
+    def chCountUnframing(self, frames):
         """
         Desenquadra os frames por contagem de caracteres
         Recebe uma lista de frames, onde cada frame é uma lista de bits
@@ -101,5 +101,36 @@ class Receptor:
             data_bits = frame[6:6 + frame_size]
             # Adiciona os bits de dados (data_bits) na lista bitStream
             bitStream.extend(data_bits)
+        # Converte a lista de bits para uma string de bits
+        return ''.join(map(str, bitStream))
+    
+    def byteInsertionUnframing(self, frames):
+        """
+        Desenquadra os frames por inserção de bytes
+        frames: lista de frames, onde cada frame é uma lista de bits
+        return: string com o trem de bits desenquadrado
+        """
+        bitStream = []
+        flag = [0, 1, 1, 1, 1, 1, 1, 0]
+        escape = [0, 1, 1, 1, 1, 1, 0, 1]
+        for frame in frames:
+            # Verifica se o quadro começa e termina com a flag
+            if frame[:8] == flag and frame[-8:] == flag:
+                # Remove a flag do início e do fim do quadro
+                data_bits = frame[8:-8]
+                i = 0
+                # Percorre os bits do quadro para verificar a presença de escape
+                while i < len(data_bits):
+                    byte = data_bits[i:i + 8]
+                    # Verifica se o byte é um byte de escape
+                    if byte == escape and i + 8 < len(data_bits):
+                        next_byte = data_bits[i + 8:i + 16]
+                        # Adiciona o próximo byte normal
+                        bitStream.extend(next_byte)
+                        i += 16
+                    else:
+                        # Adiciona o byte normal ao bitStream
+                        bitStream.extend(byte)
+                        i += 8
         # Converte a lista de bits para uma string de bits
         return ''.join(map(str, bitStream))
