@@ -96,9 +96,9 @@ class Receptor:
         for frame in frames:
             # Seleciona os 6 primeiros bits do quadro, converte para string e depois para inteiro
             # Esses 6 bits representam o tamanho do frame
-            frame_size = int(''.join(map(str, frame[:6])), 2)
+            frame_size = int(''.join(map(str, frame[:8])), 2)
             # Seleciona os próximos bits do quadro, que são os dados reais
-            data_bits = frame[6:6 + frame_size]
+            data_bits = frame[8:8 + frame_size]
             # Adiciona os bits de dados (data_bits) na lista bitStream
             bitStream.extend(data_bits)
         # Converte a lista de bits para uma string de bits
