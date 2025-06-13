@@ -134,3 +134,48 @@ class Receptor:
                         i += 8
         # Converte a lista de bits para uma string de bits
         return ''.join(map(str, bitStream))
+    
+    def bitInsertionUnframing(self, frames):
+        """
+        Desenquadra os frames por inserção de bits
+        frames: lista de frames, onde cada frame é uma lista de bits
+        return: string com o trem de bits desenquadrado
+        """
+        bitStream = []
+        flag = [0, 1, 1, 1, 1, 1, 1, 0]
+        
+        for frame in frames:
+            # Verifica se o quadro começa e termina com a flag
+            if frame[:8] == flag and frame[-8:] == flag:
+                # Remove a flag do início e do fim do quadro
+                data_bits = frame[8:-8]
+
+                # Remove os bits 0 inseridos após cinco bits 1
+                cleaned_data = self.removeBit0(data_bits)
+                bitStream.extend(cleaned_data)
+
+        # Converte a lista de bits para uma string de bits
+        return ''.join(map(str, bitStream))
+    
+    # Função auxiliar que remove o bit 0 inserido após cinco bits 1 seguidos
+    def removeBit0(self, frame_data):
+        cleaned_data = []
+        counter = 0
+        i = 0
+
+        while i < len(frame_data):
+            bit = frame_data[i]
+            cleaned_data.append(bit)
+
+            if bit == 1:
+                counter += 1
+            else:
+                counter = 0
+
+            if counter == 5:
+                # Pula o próximo bit (deve ser o 0 inserido)
+                i += 1
+                counter = 0
+            i += 1
+
+        return cleaned_data

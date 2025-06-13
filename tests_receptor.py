@@ -1,9 +1,11 @@
 import numpy as np
 from receptor import Receptor
+from transmissor import Transmitter
 
 # Configuração genérica para os testes
 config = {}
 rx = Receptor(config)
+tx = Transmitter(config)
 
 def test_bits2Text():
     bits = "0100100001100101011011000110110001101111"  # "Hello"
@@ -33,18 +35,22 @@ def test_demodule_fsk():
 
 def test_chCountUnframing():
     frame_data = [1, 0, 1, 0, 1, 0, 1, 0]  # 8 bits
-    tamanho = [0, 0, 0, 0, 1, 0, 0, 0]  # 8 bits = 8 em decimal
-    frame = tamanho + frame_data
+    frame = tx.chCountFraming(frame_data, frame_size=8)[0]
     resultado = rx.chCountUnframing([frame])
     assert resultado == "10101010", f"Esperado '10101010', mas retornou '{resultado}'"
 
 def test_byteInsertionUnframing():
-    flag = [0, 1, 1, 1, 1, 1, 1, 0]
-    escape = [0, 1, 1, 1, 1, 1, 0, 1]
     byte = [1, 0, 1, 0, 1, 0, 1, 0]
-    frame = flag + byte + flag
+    frame = tx.byteInsertionFraming(byte, frame_size=8)[0]
     resultado = rx.byteInsertionUnframing([frame])
     assert resultado == "10101010", f"Esperado '10101010', mas retornou '{resultado}'"
+
+def test_bitInsertionUnframing():
+    # bits com sequencia "111110" (inserido 0 após cinco 1s)
+    original_bits = [1, 1, 1, 1, 1, 0, 0, 0]
+    frame = tx.bitInsertionFraming(original_bits, frame_size=8)[0]
+    desenquadrado = rx.bitInsertionUnframing([frame])
+    assert desenquadrado == "11111000", f"Esperado '11111000', mas retornou '{desenquadrado}'"
 
 def rodar_todos_os_testes():
     test_bits2Text()
@@ -52,6 +58,7 @@ def rodar_todos_os_testes():
     test_demodule_fsk()
     test_chCountUnframing()
     test_byteInsertionUnframing()
+    test_bitInsertionUnframing()
     print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":
