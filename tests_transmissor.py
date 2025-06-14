@@ -15,6 +15,11 @@ def test_text2Binary():
   expected = [0,1,0,0,1,0,0,0, 0,1,1,0,1,0,0,1]
   print(f"text2Binary('Hi'): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}\n")
 
+
+################################################
+# Funções de teste para enquadramentos
+################################################
+
 def test_chCountFraming():
   transmitter = Transmitter({})
   bit_stream = [1,0,1,1,0,0,1,0, 1,1,0,1,0,1,0,0, 1,0,1]  # 19 bits
@@ -60,6 +65,72 @@ def test_bitInsertionFraming():
   ]
   print(f"bitInsertionFraming: {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}\n")
 
+
+################################################
+# Funções de teste para enquadramentos
+################################################
+
+def test_polarNRZCoder():
+  transmitter = Transmitter({})
+  
+  # Teste básico com bits alternados
+  result = transmitter.polarNRZCoder([1, 0, 1, 0])
+  expected = [1, -1, 1, -1]
+  print(f"polarNRZCoder([1,0,1,0]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste com amplitude diferente
+  result = transmitter.polarNRZCoder([1, 0], V=2)
+  expected = [2, -2]
+  print(f"polarNRZCoder([1,0], V=2): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste com sequência de 1s
+  result = transmitter.polarNRZCoder([1, 1, 1])
+  expected = [1, 1, 1]
+  print(f"polarNRZCoder([1,1,1]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}\n")
+
+def test_manchesterCoder():
+  transmitter = Transmitter({})
+  
+  # Teste básico com bits alternados
+  result = transmitter.manchesterCoder([1, 0])
+  expected = [1, 0, 0, 1]
+  print(f"manchesterCoder([1,0]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste com sequência de 0s
+  result = transmitter.manchesterCoder([0, 0])
+  expected = [0, 1, 0, 1]
+  print(f"manchesterCoder([0,0]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste com sequência de 1s
+  result = transmitter.manchesterCoder([1, 1])
+  expected = [1, 0, 1, 0]
+  print(f"manchesterCoder([1,1]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}\n")
+
+def test_bipolarCoder():
+  transmitter = Transmitter({})
+  
+  # Teste básico com bits alternados
+  result = transmitter.bipolarCoder([1, 0, 1, 0])
+  expected = [1, 0, 0, 0, -1, 0, 0, 0]
+  print(f"bipolarCoder([1,0,1,0]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste com sequência de 1s (deve alternar polaridade)
+  result = transmitter.bipolarCoder([1, 1, 1])
+  expected = [1, 0, -1, 0, 1, 0]
+  print(f"bipolarCoder([1,1,1]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste com amplitude diferente
+  result = transmitter.bipolarCoder([1, 0, 1], V=2)
+  expected = [2, 0, 0, 0, -2, 0]
+  print(f"bipolarCoder([1,0], V=2): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}\n")
+
+
+
+
+################################################
+# Chama as funções de teste
+################################################
+
 if __name__ == "__main__":
   test_text2Binary() #OK
   
@@ -69,3 +140,6 @@ if __name__ == "__main__":
   test_bitInsertionFraming() #OK
 
   #Modulação digital (banda base)
+  test_polarNRZCoder() #OK
+  test_manchesterCoder() #OK
+  test_bipolarCoder() #OK
