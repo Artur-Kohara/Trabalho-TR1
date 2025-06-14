@@ -17,7 +17,7 @@ class Receptor:
         return ''.join(chr(int(b, 2)) for b in chars)
     
 ################################################################################
-# Demodulação de sinais
+# Demodulação (portadora)
 ################################################################################
 
     def demodule_ask(self, signal, bit_samples=100, treshold=0.1):
@@ -80,6 +80,26 @@ class Receptor:
             else:
                 bits.append("0")
 
+        return ''.join(bits)
+    
+################################################################################
+# Demodulação (banda base)
+################################################################################
+
+    def polarNRZDecoder(self, signal, V=1):
+        """
+        Decodifica um sinal modulado polar NRZ
+        signal: lista de amplitudes do sinal modulado
+        V: amplitude do sinal (padrão = 1)
+        return: string com o trem de bits decodificado
+        """
+        bits = []
+        for amplitude in signal:
+            if amplitude >= V:
+                bits.append('1')
+            elif amplitude <= -V:
+                bits.append('0')
+        
         return ''.join(bits)
 
 ################################################################################

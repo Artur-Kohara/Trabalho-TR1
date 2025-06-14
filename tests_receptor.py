@@ -12,6 +12,10 @@ def test_bits2Text():
     resultado = rx.bits2Text(bits)
     assert resultado == "Hello", f"Esperado 'Hello', mas retornou '{resultado}'"
 
+################################################################################
+# Demodulação (portadora)
+################################################################################
+
 def test_demodule_ask():
     # Sinal ASK com 3 bits: "101"
     bps = 100
@@ -33,6 +37,10 @@ def test_demodule_fsk():
     resultado = rx.demodule_fsk(sinal, f0=f0, f1=f1, fs=fs, dur=dur)
     assert resultado == "101", f"Esperado '101', mas retornou '{resultado}'"
 
+################################################################################
+# Desenquadramento
+################################################################################
+
 def test_chCountUnframing():
     frame_data = [1, 0, 1, 0, 1, 0, 1, 0]  # 8 bits
     frame = tx.chCountFraming(frame_data, frame_size=8)[0]
@@ -51,6 +59,21 @@ def test_bitInsertionUnframing():
     frame = tx.bitInsertionFraming(original_bits, frame_size=8)[0]
     desenquadrado = rx.bitInsertionUnframing([frame])
     assert desenquadrado == "11111000", f"Esperado '11111000', mas retornou '{desenquadrado}'"
+
+################################################################################
+# Demodulação (banda base)
+################################################################################
+
+def test_polarNRZDecoder():
+    bits = [1, 0, 1, 0, 1, 0]
+    V = 1
+    sinal_modulado = tx.polarNRZCoder(bits, V)
+    esperado = [V, -V, V, -V, V, -V]
+    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+
+################################################################################
+# Roda todos os testes
+################################################################################
 
 def rodar_todos_os_testes():
     test_bits2Text()
