@@ -240,30 +240,37 @@ class Transmitter:
   #Retorna o sinal modulado pelo chaveamento de quadratura e amplitude
   def QAM8(self,bitStream,A,f):
     sig_size = len(bitStream)
-    signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por bit (0,0,0):
+    signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por trio de bits 
 
-    constelation = {
-      (0,0,0): 1 + 0j,
-      (0,0,1): 0.707 + 0.707j,
-      (0,1,1): 0 + 1j,
-      (0,1,0): -0.707 + 0.707j,
-      (1,1,0): -1 + 0j,
-      (1,1,1): -0.707 - 0.707j,
-      (1,0,1): 0 - 1j,
-      (1,0,0): 0.707 - 0.707j
+    #Adiciona zeros ao final caso não seja múltiplo de 3
+    while sig_size % 3 != 0:
+        bitStream.append(0)
+
+    #Cria a constelação, seguindo a imagem na apresentação
+    #TODO:testar, talvez esteja errado e precisariamos criar componentes I e Q
+    constellation = {
+      (0,0,0): (A,0),
+      (0,0,1): (A/2, np.pi/4),
+      (0,1,1): (A,np.pi/2),
+      (0,1,0): (A/2,3*np.pi/4),
+      (1,1,0): (A,np.pi),
+      (1,1,1): (A/2,5*np.pi/4),
+      (1,0,1): (A,3*np.pi/2),
+      (1,0,0): (A/2,7*np.pi/4)
     }
 
-    for i in range(sig_size):
-      #Se o bit for 1, gera 100 amostras da portadora com frequência f1
-      if bitStream[i] == 1:
-        for j in range(100):
-          signal[i*100 + j] = A * np.sin(2*np.pi*f1*j/100) #j/100 funciona como o tempo t
-      #Se o bit for 0, gera 100 amostras da portadora com frequência f2
-      else:
-        for j in range(100):
-          signal[i*100 + j] = A * np.sin(2*np.pi*f2*j/100) #j/100 funciona como o tempo t
-              
-    return signal 
+    #Percorrendo o trem de bits e mapeando os símbolos
+    for i in range(0, sig_size, 3):  # Lê 3 bits de cada vez
+      #Cria tupla de 3 bits do bitStream
+      bits = tuple(bitStream[i:i + 3])
+      #Verifica a amplitude e a fase correspondentes aos bits
+      amplitude, phase = constellation[bits]
+      # Calcula o sinal para esse símbolo com 100 amostras por bit
+      for j in range(100):
+        index = (i//3)*100+j
+        signal[index] = amplitude * np.cos(2*np.pi*f*j/100+phase)
+
+    return signal
       
       
 
