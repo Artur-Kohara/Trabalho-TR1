@@ -23,7 +23,7 @@ class Transmitter:
   #############################################
 
   #Enquadramento por contagem de caracteres
-  #Recebe um trem de bits (lista de inteiros), e o tamanho do quadro (32 bits ou 4 bytes)
+  #Recebe um trem de bits (lista de inteiros), e o tamanho do quadro 
   #Retorna uma lista de quadros, onde cada quadro é uma lista de inteiros
   def chCountFraming(self, bitStream, frame_size):
     frames = [] 
@@ -135,7 +135,7 @@ class Transmitter:
   #############################################
   # Protocolos de detecção de erros
   #############################################
-
+  '''
   #Protocolo bit de paridade par
   def bitParity(self,):
 
@@ -144,7 +144,7 @@ class Transmitter:
 
   #Protocolo Hamming
   def Hamming(sefl,):
-
+  '''
 
   #############################################
   # Modulação digital (banda base) 
