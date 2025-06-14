@@ -34,16 +34,18 @@ def test_demodule_ask():
     assert demodulated_bits == original_bits_str, "Erro na demodulação ASK"
 
 def test_demodule_fsk():
-    bits = "101"
-    f0, f1, fs, dur = 1000, 2000, 10000, 0.01
-    t = np.linspace(0, dur, int(fs * dur), endpoint=False)
-    sinal = []
-    for bit in bits:
-        f = f1 if bit == "1" else f0
-        sinal.extend(np.sin(2 * np.pi * f * t))
-    sinal = np.array(sinal)
-    resultado = rx.demodule_fsk(sinal, f0=f0, f1=f1, fs=fs, dur=dur)
-    assert resultado == "101", f"Esperado '101', mas retornou '{resultado}'"
+    original_bits = [1, 0, 1, 1, 0, 0, 1]
+    A = 1.0
+    f0 = 5  # Frequência para bit 0
+    f1 = 10  # Frequência para bit 1
+    bit_samples = 100  # Número de amostras por bit
+    # Modula os bits
+    modulated_signal = tx.FSK(original_bits, A, f1, f0)
+    # Demodula o sinal
+    demodulated_bits = rx.demoduleFSK(modulated_signal, f0, f1, A, bit_samples)
+    # Converte os bits originais para string para comparar
+    original_bits_str = ''.join(str(b) for b in original_bits)
+    assert demodulated_bits == original_bits_str, "Erro na demodulação FSK"
 
 ################################################################################
 # Desenquadramento

@@ -29,11 +29,11 @@ class Receptor:
         """
         bits = []
 
-        # Percorre o signal em segmentos de tamanho bit_samples
+        # Percorre o signal em segments de tamanho bit_samples
         for i in range(0, len(signal), bit_samples):
-            # Extrai um segmento (correspondente a um bit)
+            # Extrai um segment (correspondente a um bit)
             segment = signal[i:i+bit_samples]
-            # Cálculo de energia média do segmento (eleva ao quadrado cada amostra e tira a média)
+            # Cálculo de energia média do segment (eleva ao quadrado cada amostra e tira a média)
             energy = np.mean(np.square(segment))
 
             if energy > treshold:
@@ -43,42 +43,43 @@ class Receptor:
 
         return ''.join(bits)
 
-    def demodule_fsk(self, signal, f0=1000, f1=2000, fs=10000, dur=0.01):
+    def demoduleFSK(self, signal, f0, f1, A=1, bit_samples=100):
         """
-        signal: np.array com o sinal FSK recebido
-        f0: frequência do bit 0
-        f1: frequência do bit 1
-        fs: taxa de amostragem
-        dur: duração de um bit (em segundos)
-        return: string com os bits demodulados
+        Demodula um sinal FSK.
+
+        signal: vetor de floats com o sinal modulado FSK
+        f0: frequência associada ao bit 0
+        f1: frequência associada ao bit 1
+        A: amplitude da portadora (mesmo usado na modulação)
+        bit_samples: número de amostras por bit (padrão: 100)
+        return: string de bits decodificados
         """
-        n = int(fs * dur)  # número de amostras por bit
         bits = []
+        # Vetor de tempo normalizado de 0 até (quase) 1, com bit_samples amostras
+        # Isso representa o tempo de um bit, dividido em partes iguais
+        t = np.array([j / bit_samples for j in range(bit_samples)])
 
-        # Vetor de tempo para instantes uniformemente espaçados de 0 a dur (dur excluído) para as amostras
-        t = np.linspace(0, dur, n, endpoint=False)
+        # Sinais senoidais de referência para as frequências f0 e f1
+        ref_0 = A * np.sin(2 * np.pi * f0 * t)
+        ref_1 = A * np.sin(2 * np.pi * f1 * t)
 
-        # Vetores ref_0 e ref_1 são sinais senoidais de referência para as frequências f0 e f1
-        ref_0 = np.sin(2 * np.pi * f0 * t)
-        ref_1 = np.sin(2 * np.pi * f1 * t)
-
-        # O sinal FSK é dividido em segmentos de n amostras (cada um correspondendo a um bit)
-        for i in range(0, len(signal), n):
-            segment = signal[i:i+n]
-            if len(segment) < n:
+        # O sinal é percorrido em blocos de bit_samples amostras, cada um representando um bit
+        for i in range(0, len(signal), bit_samples):
+            segment = signal[i:i + bit_samples]
+            # Garante que o último segmento tenha tamanho suficiente (evita erros com pedaços incompletos)
+            if len(segment) < bit_samples:
                 break
 
             # Para cada segmento, calcula-se o produto escalar (correlação) com os sinais de referência
-            # (mede a semelhança entre o segmento do sinal recebido e os sinais senoidais de f0 e f1
+            # Se o sinal tem frequência próxima de f1, a correlação com ref_1 será maior (em valor absoluto)
+            # Se for f0, a correlação com ref_0 será maior
             cor_0 = np.dot(segment, ref_0)
             cor_1 = np.dot(segment, ref_1)
 
-            # Se a correlação com ref_1 for maior, a frequência predominante é f1 → bit "1"
-            # Caso contrário, é f0 → bit "0"
-            if abs(cor_1) > abs(cor_0):
-                bits.append("1")
-            else:
-                bits.append("0")
+            # Compara a semelhança do sinal com cada referência.
+            # O bit é 1 se o sinal se parece mais com f1; senão, é 0.
+            bit = "1" if abs(cor_1) > abs(cor_0) else "0"
+            bits.append(bit)
 
         return ''.join(bits)
     
