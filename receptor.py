@@ -86,7 +86,7 @@ class Receptor:
 # Desenquadramentos
 ################################################################################
 
-    def chCountDeframing(self, frames):
+    def chCountUnframing(self, frames):
         """
         Desenquadra os frames por contagem de caracteres
         Recebe uma lista de frames, onde cada frame é uma lista de bits
@@ -96,10 +96,86 @@ class Receptor:
         for frame in frames:
             # Seleciona os 6 primeiros bits do quadro, converte para string e depois para inteiro
             # Esses 6 bits representam o tamanho do frame
-            frame_size = int(''.join(map(str, frame[:6])), 2)
+            frame_size = int(''.join(map(str, frame[:8])), 2)
             # Seleciona os próximos bits do quadro, que são os dados reais
-            data_bits = frame[6:6 + frame_size]
+            data_bits = frame[8:8 + frame_size]
             # Adiciona os bits de dados (data_bits) na lista bitStream
             bitStream.extend(data_bits)
         # Converte a lista de bits para uma string de bits
         return ''.join(map(str, bitStream))
+    
+    def byteInsertionUnframing(self, frames):
+        """
+        Desenquadra os frames por inserção de bytes
+        frames: lista de frames, onde cada frame é uma lista de bits
+        return: string com o trem de bits desenquadrado
+        """
+        bitStream = []
+        flag = [0, 1, 1, 1, 1, 1, 1, 0]
+        escape = [0, 1, 1, 1, 1, 1, 0, 1]
+        for frame in frames:
+            # Verifica se o quadro começa e termina com a flag
+            if frame[:8] == flag and frame[-8:] == flag:
+                # Remove a flag do início e do fim do quadro
+                data_bits = frame[8:-8]
+                i = 0
+                # Percorre os bits do quadro para verificar a presença de escape
+                while i < len(data_bits):
+                    byte = data_bits[i:i + 8]
+                    # Verifica se o byte é um byte de escape
+                    if byte == escape and i + 8 < len(data_bits):
+                        next_byte = data_bits[i + 8:i + 16]
+                        # Adiciona o próximo byte normal
+                        bitStream.extend(next_byte)
+                        i += 16
+                    else:
+                        # Adiciona o byte normal ao bitStream
+                        bitStream.extend(byte)
+                        i += 8
+        # Converte a lista de bits para uma string de bits
+        return ''.join(map(str, bitStream))
+    
+    def bitInsertionUnframing(self, frames):
+        """
+        Desenquadra os frames por inserção de bits
+        frames: lista de frames, onde cada frame é uma lista de bits
+        return: string com o trem de bits desenquadrado
+        """
+        bitStream = []
+        flag = [0, 1, 1, 1, 1, 1, 1, 0]
+        
+        for frame in frames:
+            # Verifica se o quadro começa e termina com a flag
+            if frame[:8] == flag and frame[-8:] == flag:
+                # Remove a flag do início e do fim do quadro
+                data_bits = frame[8:-8]
+
+                # Remove os bits 0 inseridos após cinco bits 1
+                cleaned_data = self.removeBit0(data_bits)
+                bitStream.extend(cleaned_data)
+
+        # Converte a lista de bits para uma string de bits
+        return ''.join(map(str, bitStream))
+    
+    # Função auxiliar que remove o bit 0 inserido após cinco bits 1 seguidos
+    def removeBit0(self, frame_data):
+        cleaned_data = []
+        counter = 0
+        i = 0
+
+        while i < len(frame_data):
+            bit = frame_data[i]
+            cleaned_data.append(bit)
+
+            if bit == 1:
+                counter += 1
+            else:
+                counter = 0
+
+            if counter == 5:
+                # Pula o próximo bit (deve ser o 0 inserido)
+                i += 1
+                counter = 0
+            i += 1
+
+        return cleaned_data
