@@ -78,6 +78,12 @@ def test_manchesterDecoder():
     esperado = [V, -V, -V, V, V, -V, -V, V, V, -V, -V, V]
     assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
 
+def test_bipolarDecoder():
+    bits = [1, 0, 1, 0, 1, 0, 1, 1]
+    sinal_modulado = tx.bipolarCoder(bits)
+    esperado = [1, 0, -1, 0, 1, 0, -1, 1]
+    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+
 ################################################################################
 # Roda todos os testes
 ################################################################################

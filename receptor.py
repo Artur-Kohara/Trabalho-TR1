@@ -120,6 +120,24 @@ class Receptor:
                 bits.append('0')
         
         return ''.join(bits)
+    
+    def bipolarDecoder(self, signal, V=1):
+        """
+        Decodifica um sinal bipolar AMI
+        signal: lista de amplitudes (valores como 0, +V ou -V)
+        V: valor da amplitude (padrão: 1)
+        return: string de bits decodificados
+        """
+        bits = []
+
+        for i in range(0, len(signal), 2):
+            a, b = signal[i], signal[i+1]
+            if a == 0 and b == 0:
+                bits.append("0")
+            elif abs(a) == V and b == 0:
+                bits.append("1")
+
+        return ''.join(bits)
 
 ################################################################################
 # Desenquadramentos
