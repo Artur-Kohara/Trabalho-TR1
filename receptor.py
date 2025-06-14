@@ -101,6 +101,25 @@ class Receptor:
                 bits.append('0')
         
         return ''.join(bits)
+    
+    def manchesterDecoder(self, signal, V=1):
+        """
+        Decodifica um sinal modulado Manchester
+        signal: lista de amplitudes do sinal modulado
+        V: amplitude do sinal (padrão = 1)
+        return: string com o trem de bits decodificado
+        """
+        bits = []
+        # Itera sobre os índices do sinal, de 2 em 2, porque cada bit codificado ocupa dois valores no sinal
+        for i in range(0, len(signal), 2):
+            # Se a primeira metade está alta (+V) e a segunda está baixa (-V), representa um bit 1
+            if signal[i] >= V and signal[i + 1] <= -V:
+                bits.append('1')
+            #Se a primeira metade está baixa (-V) e a segunda está alta (+V), representa um bit 0
+            elif signal[i] <= -V and signal[i + 1] >= V:
+                bits.append('0')
+        
+        return ''.join(bits)
 
 ################################################################################
 # Desenquadramentos
