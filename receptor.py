@@ -13,6 +13,7 @@ class Receptor:
     def bits2Text(self, bits):
         # Pega o trem de bits e separa em blocos de 8 bits(1 byte)
         chars = [bits[i:i+8] for i in range(0, len(bits), 8)]
+        chars = [''.join(map(str, b)) for b in chars]  # Converte cada bloco de bits para string
         # Transforma cada bloco de bits em um inteiro e depois em um caractere (ASCII)
         return ''.join(chr(int(b, 2)) for b in chars)
     

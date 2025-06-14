@@ -8,7 +8,7 @@ rx = Receptor(config)
 tx = Transmitter(config)
 
 def test_bits2Text():
-    bits = "0100100001100101011011000110110001101111"  # "Hello"
+    bits = tx.text2Binary("Hello")
     resultado = rx.bits2Text(bits)
     assert resultado == "Hello", f"Esperado 'Hello', mas retornou '{resultado}'"
 
