@@ -175,7 +175,7 @@ class Transmitter:
 
     return modulated_signal
 
-  #Modulação Bipolar(AMI): 0 é representado por [0, 0] e 1 alterna entre [V, 0] e [-V, 0], com V=1 por padrão
+  #Modulação Bipolar(AMI): 0 é representado por 0 e 1 alterna entre V e -V, com V=1 por padrão
   #Recebe um trem de bits (lista de bits)
   #Retorna lista de amplitudes do sinal modulado
   def bipolarCoder(self,bitStream,V=1):
@@ -184,11 +184,11 @@ class Transmitter:
 
     for bit in bitStream:
       if bit == 0:
-        modulated_signal.extend([0, 0])  #0 é representado por [0, 0]
+        modulated_signal.append(0)  #0 é representado por [0, 0]
       else:
         #Alterna a polaridade para cada 1
         last_polarity = V if last_polarity == -V else -V
-        modulated_signal.extend([last_polarity, 0])  # 1 é representado por [V, 0] ou [-V, 0] 
+        modulated_signal.append(last_polarity)  # 1 é representado por V ou -V
 
     return modulated_signal
 
@@ -239,36 +239,38 @@ class Transmitter:
   #Recebe o trem de bits (lista de bits), a Amplitude e frequência do seno
   #Retorna o sinal modulado pelo chaveamento de quadratura e amplitude
   def QAM8(self,bitStream,A,f):
+    # Adiciona zeros ao final caso não seja múltiplo de 3
+    while len(bitStream) % 3 != 0:
+      bitStream.append(0)
+
     sig_size = len(bitStream)
-    signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por trio de bits 
+    num_symbols = len(bitStream) // 3
+    signal = np.zeros(num_symbols * 100, dtype=float)  # 100 amostras por símbolo
 
-    #Adiciona zeros ao final caso não seja múltiplo de 3
-    while sig_size % 3 != 0:
-        bitStream.append(0)
-
-    #Cria a constelação, seguindo a imagem na apresentação
-    #TODO:testar, talvez esteja errado e precisariamos criar componentes I e Q
+    #Associa o trio de bits à uma tupla (I,Q)
     constellation = {
-      (0,0,0): (A,0),
-      (0,0,1): (A/2, np.pi/4),
-      (0,1,1): (A,np.pi/2),
-      (0,1,0): (A/2,3*np.pi/4),
-      (1,1,0): (A,np.pi),
-      (1,1,1): (A/2,5*np.pi/4),
-      (1,0,1): (A,3*np.pi/2),
-      (1,0,0): (A/2,7*np.pi/4)
+        (0,0,0): (A,0),          
+        (0,0,1): (A,A),          
+        (0,1,1): (0,A),          
+        (0,1,0): (-A,A),         
+        (1,1,0): (-A,0),         
+        (1,1,1): (-A,-A),        
+        (1,0,1): (0,-A),         
+        (1,0,0): (A,-A)          
     }
 
     #Percorrendo o trem de bits e mapeando os símbolos
     for i in range(0, sig_size, 3):  # Lê 3 bits de cada vez
       #Cria tupla de 3 bits do bitStream
       bits = tuple(bitStream[i:i + 3])
-      #Verifica a amplitude e a fase correspondentes aos bits
-      amplitude, phase = constellation[bits]
-      # Calcula o sinal para esse símbolo com 100 amostras por bit
+
+      I,Q = constellation[bits]
+
+      #Calcula o sinal para esse símbolo com 100 amostras por bit
       for j in range(100):
         index = (i//3)*100+j
-        signal[index] = amplitude * np.cos(2*np.pi*f*j/100+phase)
+        #Sinal modulado = I*cos(2πft) - Q*sin(2πft)
+        signal[index] = I*np.cos(2*np.pi*f*j/100) - Q*np.sin(2*np.pi*f*j/100)
 
     return signal
       
