@@ -20,7 +20,7 @@ class Receptor:
 # Demodulação (portadora)
 ################################################################################
 
-    def demodule_ask(self, signal, bit_samples=100, treshold=0.1):
+    def demoduleASK(self, signal, bit_samples=100, treshold=0.1):
         """
         signal: array de float, contendo o signal modulado ASK
         bit_samples: número de amostras por bit

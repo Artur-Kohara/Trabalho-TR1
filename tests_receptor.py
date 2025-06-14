@@ -17,13 +17,21 @@ def test_bits2Text():
 ################################################################################
 
 def test_demodule_ask():
-    # Sinal ASK com 3 bits: "101"
-    bps = 100
-    onda = np.sin(2 * np.pi * 1000 * np.linspace(0, 0.01, bps, endpoint=False))
-    zero = np.zeros(bps)
-    sinal = np.concatenate([onda, zero, onda])
-    resultado = rx.demodule_ask(sinal, bit_samples=bps)
-    assert resultado == "101", f"Esperado '101', mas retornou '{resultado}'"
+
+    original_bits = [1, 0, 1, 1, 0, 0, 1]
+    amplitude = 1.0
+    frequency = 5  # em Hz ou unidades relativas a 100 amostras por bit
+
+    # Modula os bits
+    modulated_signal = tx.ASK(original_bits, amplitude, frequency)
+
+    # Demodula o sinal
+    demodulated_bits = rx.demoduleASK(modulated_signal)
+
+    # Converte os bits originais para string para comparar
+    original_bits_str = ''.join(str(b) for b in original_bits)
+
+    assert demodulated_bits == original_bits_str, "Erro na demodulação ASK"
 
 def test_demodule_fsk():
     bits = "101"
