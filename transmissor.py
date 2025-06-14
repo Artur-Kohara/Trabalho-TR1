@@ -1,5 +1,7 @@
 #Esse arquivo consiste na classe do transmissor e seus métodos.
 
+import numpy as np
+
 class Transmitter:
   #Config é um parâmetro passado na inicialização que controla aspectos do funcionamento do transmissor. ex: bitrate, codificação etc
   def __init__ (self,config):
@@ -135,13 +137,13 @@ class Transmitter:
   #############################################
 
   #Protocolo bit de paridade par
-  def bitParity(self,)
+  def bitParity(self,):
 
   #Protocolo CRC
-  def CRC(self,)
+  def CRC(self,):
 
   #Protocolo Hamming
-  def Hamming(sefl,)
+  def Hamming(sefl,):
 
 
   #############################################
@@ -189,3 +191,80 @@ class Transmitter:
         modulated_signal.extend([last_polarity, 0])  # 1 é representado por [V, 0] ou [-V, 0] 
 
     return modulated_signal
+
+
+  #############################################
+  # Modulação por portadora (banda passante) 
+  #############################################
+
+  #Modulação por chaveamento de amplitude: se bit = 1 -> seno com amplitude A. Senão -> amplitude 0
+  #Recebe o trem de bits (lista de bits), a Amplitude do seno e a frequência
+  #Retorna o sinal modulado pelo chaveamento de amplitude
+  def ASK(self, bitStream, A, f):
+    sig_size = len(bitStream)
+    signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por bit
+
+    for i in range(sig_size):
+      #Se o bit for 1, gera 100 amostras da portadora com amplitude A
+      if bitStream[i] == 1:
+        for j in range(100):
+          signal[i*100 + j] = A * np.sin(2*np.pi*f*j/100) #j/100 funciona como o tempo t
+      #Se o bit for 0, gera 100 amostras nulas 
+      else:
+        for j in range(100):
+          signal[i*100 + j] = 0
+              
+    return signal
+
+  #Modulação por chaveamento de frequência: se bit = 1 -> portadora com frequência f1. Senão portadora com frequência f2
+  #Recebe o trem de bits (lista de bits), a Amplitude do seno e as 2 frequências
+  #Retorna o sinal modulado pelo chaveamento de frequência
+  def FSK(self, bitStream, A, f1,f2):
+    sig_size = len(bitStream)
+    signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por bit
+
+    for i in range(sig_size):
+      #Se o bit for 1, gera 100 amostras da portadora com frequência f1
+      if bitStream[i] == 1:
+        for j in range(100):
+          signal[i*100 + j] = A * np.sin(2*np.pi*f1*j/100) #j/100 funciona como o tempo t
+      #Se o bit for 0, gera 100 amostras da portadora com frequência f2
+      else:
+        for j in range(100):
+          signal[i*100 + j] = A * np.sin(2*np.pi*f2*j/100) #j/100 funciona como o tempo t
+              
+    return signal
+
+  #Modulação por quadratura e amplitude 8QAM: segue uma contelação em que cada ponto corresponde a 3 bits
+  #Recebe o trem de bits (lista de bits), a Amplitude e frequência do seno
+  #Retorna o sinal modulado pelo chaveamento de quadratura e amplitude
+  def QAM8(self,bitStream,A,f):
+    sig_size = len(bitStream)
+    signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por bit (0,0,0):
+
+    constelation = {
+      (0,0,0): 1 + 0j,
+      (0,0,1): 0.707 + 0.707j,
+      (0,1,1): 0 + 1j,
+      (0,1,0): -0.707 + 0.707j,
+      (1,1,0): -1 + 0j,
+      (1,1,1): -0.707 - 0.707j,
+      (1,0,1): 0 - 1j,
+      (1,0,0): 0.707 - 0.707j
+    }
+
+    for i in range(sig_size):
+      #Se o bit for 1, gera 100 amostras da portadora com frequência f1
+      if bitStream[i] == 1:
+        for j in range(100):
+          signal[i*100 + j] = A * np.sin(2*np.pi*f1*j/100) #j/100 funciona como o tempo t
+      #Se o bit for 0, gera 100 amostras da portadora com frequência f2
+      else:
+        for j in range(100):
+          signal[i*100 + j] = A * np.sin(2*np.pi*f2*j/100) #j/100 funciona como o tempo t
+              
+    return signal 
+      
+      
+
+
