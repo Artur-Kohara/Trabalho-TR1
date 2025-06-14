@@ -47,6 +47,27 @@ def test_demodule_fsk():
     original_bits_str = ''.join(str(b) for b in original_bits)
     assert demodulated_bits == original_bits_str, "Erro na demodulação FSK"
 
+def test_QAM8_modulation_demodulation():
+
+    # Bits de teste: escolha uma sequência conhecida ou aleatória
+    original_bits = [0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1]  # 12 bits (4 símbolos de 3 bits)
+    amplitude = 1.0
+    frequency = 5  # relativa às 100 amostras por símbolo
+
+    # Modulação
+    modulated_signal = tx.QAM8(original_bits.copy(), amplitude, frequency)
+
+    # Demodulação
+    demodulated_bits_str = rx.demodule8QAM(modulated_signal, A=amplitude, f=frequency)
+
+    # Converte original para string para comparação
+    padded_bits = original_bits.copy()
+    while len(padded_bits) % 3 != 0:
+        padded_bits.append(0)
+    expected_bits_str = ''.join(str(b) for b in padded_bits)
+
+    assert demodulated_bits_str == expected_bits_str, "Erro na demodulação 8-QAM"
+
 ################################################################################
 # Desenquadramento
 ################################################################################

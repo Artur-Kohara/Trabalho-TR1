@@ -84,6 +84,62 @@ class Receptor:
 
         return ''.join(bits)
     
+    def demodule8QAM(self, signal, A=1, f=1000, symbol_samples=100):
+        """
+        Demodula um sinal 8-QAM.
+        signal: np.array com o sinal QAM
+        A: amplitude usada na modulação
+        f: frequência da portadora
+        symbol_samples: número de amostras por símbolo (padrão: 100)
+        return: string com os bits demodulados
+        """
+        bits = []
+        # Vetor de tempo normalizado no intervalo [0, 1) com symbol_samples amostras
+        t = np.arange(symbol_samples) / symbol_samples
+        cos_wave = np.cos(2 * np.pi * f * t)
+        sin_wave = np.sin(2 * np.pi * f * t)
+
+        # Mapa reverso: de (I, Q) → bits
+        constellation = {
+            (A, 0):     (0, 0, 0),
+            (A, A):     (0, 0, 1),
+            (0, A):     (0, 1, 1),
+            (-A, A):    (0, 1, 0),
+            (-A, 0):    (1, 1, 0),
+            (-A, -A):   (1, 1, 1),
+            (0, -A):    (1, 0, 1),
+            (A, -A):    (1, 0, 0),
+        }
+
+        # Extrai símbolos do sinal, cada símbolo tem symbol_samples amostras
+        # Verifica se há amostras suficientes
+        for i in range(0, len(signal), symbol_samples):
+            s = signal[i:i+symbol_samples]
+            if len(s) < symbol_samples:
+                break
+
+            # Estima I e Q por correlação com cosseno e seno
+            # (multiplica por 2 / symbol_samples → normalização da correlação)
+            I = np.dot(s, cos_wave) * 2 / symbol_samples
+            Q = -np.dot(s, sin_wave) * 2 / symbol_samples  # sinal negativo por definição da modulação
+
+            # Arredondar para múltiplos válidos de A (−A, 0, A)
+            I_hat = A * round(I / A)
+            Q_hat = A * round(Q / A)
+
+            # Tratar casos extremos com pequena margem de erro numérica
+            # Garante que I_hat e Q_hat estejam dentro dos limites da constelação
+            # I_hat e Q_hat devem estar entre -A e A
+            I_hat = max(min(I_hat, A), -A)
+            Q_hat = max(min(Q_hat, A), -A)
+
+            # Usa o dicionário da constelação para recuperar os 3 bits correspondentes ao símbolo detectado
+            bits_tuple = constellation.get((I_hat, Q_hat))
+
+            bits.extend(bits_tuple)
+
+        return ''.join(str(b) for b in bits)
+    
 ################################################################################
 # Demodulação (banda base)
 ################################################################################
