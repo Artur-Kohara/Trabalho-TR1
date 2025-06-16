@@ -229,6 +229,89 @@ def test_QAM8():
   print(f"QAM8 múltiplos símbolos - segundo símbolo amostra 100: {result[100]} | Esperado: {0.0} | {'✅' if abs(result[100] - 0.0) < tol else '❌'}\n")
 
 
+##########################################################
+# Funções de teste para detecção de erro
+##########################################################
+
+def test_addEvenParityBit():
+  transmitter = Transmitter({})
+  
+  # Teste 1: Número par de 1s (deve adicionar 0)
+  bits = [1, 0, 1, 0]  # 2 uns (par)
+  result = transmitter.addEvenParityBit(bits)
+  expected = bits + [0]
+  print(f"addEvenParityBit({bits}): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste 2: Número ímpar de 1s (deve adicionar 1)
+  bits = [1, 1, 1, 0]  # 3 uns (ímpar)
+  result = transmitter.addEvenParityBit(bits)
+  expected = bits + [1]
+  print(f"addEvenParityBit({bits}): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste 3: Stream vazio (deve adicionar 0)
+  bits = []  # 0 uns (par)
+  result = transmitter.addEvenParityBit(bits)
+  expected = bits + [0]
+  print(f"addEvenParityBit({bits}): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste 4: Todos 1s (par)
+  bits = [1, 1, 1, 1]  # 4 uns (par)
+  result = transmitter.addEvenParityBit(bits)
+  expected = bits + [0]
+  print(f"addEvenParityBit({bits}): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste 5: Todos 0s (par)
+  bits = [0, 0, 0, 0]  # 0 uns (par)
+  result = transmitter.addEvenParityBit(bits)
+  expected = bits + [0]
+  print(f"addEvenParityBit({bits}): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}\n")
+
+
+def test_addCRC():
+  transmitter = Transmitter({})
+  
+  # Teste 1: Bitstream simples que deve gerar CRC conhecido
+  bits = [1, 0, 1, 0]  # 0xA
+  result = transmitter.addCRC(bits)
+  expected_crc = [0,1,1,0,1,1,0]
+  expected_result = bits + expected_crc
+  print(f"addCRC({bits}): {result[-7:]} | CRC Esperado: {expected_crc} | {'✅' if result[-7:] == expected_crc else '❌'}")
+
+  # Teste : Bitstream simples que deve gerar CRC conhecido
+  bits = [0,0,0,1]  
+  result = transmitter.addCRC(bits)
+  expected_crc = [0,0,0,0,1,1,1]
+  expected_result = bits + expected_crc
+  print(f"addCRC({bits}): {result[-7:]} | CRC Esperado: {expected_crc} | {'✅' if result[-7:] == expected_crc else '❌'}")
+  
+  # Teste 2: Bitstream vazio (deve retornar apenas o CRC)
+  bits = []
+  result = transmitter.addCRC(bits)
+  expected_crc = [0,0,0,0,0,0,0]
+  expected_result = bits + expected_crc
+  print(f"addCRC({bits}): {result} | Esperado: {expected_result} | {'✅' if result == expected_result else '❌'}")
+  
+  # Teste 3: Bitstream com todos 1s
+  bits = [1, 1, 1, 1]  # 0xF
+  result = transmitter.addCRC(bits)
+  expected_crc = [0,1,0,1,1,0,1]
+  print(f"addCRC({bits}): {result[-7:]} | CRC Esperado: {expected_crc} | {'✅' if result[-7:] == expected_crc else '❌'}")
+  
+  # Teste 4: Bitstream longo
+  bits = [1,1,0,0, 1,0,1,0, 0,1,1,0]  # 0xCA6
+  result = transmitter.addCRC(bits)
+  # Verificação indireta - testando propriedades do CRC
+  print(f"addCRC(long stream): CRC length={len(result[-7:])} | Esperado: 7 | {'✅' if len(result[-7:]) == 7 else '❌'}")
+  
+  # Teste 5: Verificação round-trip
+  bits = [1, 0, 1, 1, 0, 1]
+  crc_appended = transmitter.addCRC(bits)
+  # Deve ser possível verificar recalculando
+  verification = transmitter.addCRC(crc_appended)
+  # Os últimos 7 bits devem ser zeros
+  print(f"Verificação round-trip: {verification[-7:]} | Esperado: [0,0,0,0,0,0,0] | {'✅' if all(b == 0 for b in verification[-7:]) else '❌'}\n")
+
+
 ################################################
 # Chama as funções de teste
 ################################################
@@ -250,3 +333,7 @@ if __name__ == "__main__":
   test_ASK() #OK
   test_FSK() #OK
   test_QAM8() #TODO: checar com mais calma
+  
+  #Detecção de erro
+  test_addEvenParityBit() #OK
+  test_addCRC() #Acho que OK
