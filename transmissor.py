@@ -275,5 +275,34 @@ class Transmitter:
     return signal
       
       
+  #############################################
+  # Protocolos de detecção de erros (EDC)
+  #############################################
 
+  #Adiciona bit de paridade ao final do bitStream. Bit = 0 se soma de 1's for par e 1 se ímpar
+  #TODO: add essa linha no receptor: no receptor, verifica-se se a soma dos bits é par. Ao adicionar o bit de paridade, a soma é par se não houver erro.
+  #Recebe trem de bits (lista de bits)
+  #Retorna o trem de bits, adicionando um bit de paridade ao final
+  def addEvenParityBit(self,bitStream):
+    sum_ones = sum(bitStream)
+    parity = sum_ones % 2  #0 se par, 1 se ímpar
+    return bitStream + [parity]
 
+  #Calcula e adiciona o CRC usando o polinômio gerador pré definido, neste caso o CRC-7 = 0x87 ou 1000 0111 (grau 7)
+  #Recebe trem de bits (lista de bits)
+  #Retorna o trem de bits, adicionando o CRC ao final
+  def addCRC(self,bitStream):
+    gen_poly = [1,0,0,0, 0,1,1,1]
+    dividend = list(bitStream) + [0]*(len(gen_poly)-1) #Cópia de bitStream, adicionando n zeros ao final, em que n é o grau do polinômio (grau 7)
+
+    for i in range(len(bitStream)):
+      #Se o bit atual for 1, faz XOR com cada bit do polinômio gerador
+      if dividend[i] == 1:
+        for j in range (len(gen_poly)): 
+          dividend[i+j] = dividend[i+j] ^ gen_poly[j]
+
+    #Os últimos 7 bits (grau) do dividendo são o CRC
+    crc = dividend[-7:]
+    return bitStream + crc
+
+  def addHamming(self, ... ):
