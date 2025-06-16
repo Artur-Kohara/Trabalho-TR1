@@ -293,7 +293,8 @@ class Transmitter:
   #Retorna o trem de bits, adicionando o CRC ao final
   def addCRC(self,bitStream):
     gen_poly = [1,0,0,0, 0,1,1,1]
-    dividend = list(bitStream) + [0]*(len(gen_poly)-1) #Cópia de bitStream, adicionando n zeros ao final, em que n é o grau do polinômio (grau 7)
+    degree = len(gen_poly) - 1 #Grau do polinômio
+    dividend = bitStream.copy() + [0]*degree #Cópia de bitStream, adicionando n zeros ao final, em que n é o grau do polinômio (grau 7)
 
     for i in range(len(bitStream)):
       #Se o bit atual for 1, faz XOR com cada bit do polinômio gerador
@@ -302,7 +303,8 @@ class Transmitter:
           dividend[i+j] = dividend[i+j] ^ gen_poly[j]
 
     #Os últimos 7 bits (grau) do dividendo são o CRC
-    crc = dividend[-7:]
+    crc = dividend[-degree:]
     return bitStream + crc
 
-  def addHamming(self, ... ):
+  def addHamming(self, bitStream):
+    return 0
