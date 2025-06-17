@@ -99,21 +99,24 @@ def test_polarNRZDecoder():
     bits = [1, 0, 1, 0, 1, 0]
     V = 1
     sinal_modulado = tx.polarNRZCoder(bits, V)
-    esperado = [V, -V, V, -V, V, -V]
-    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+    sinal_demodulado = rx.polarNRZDecoder(sinal_modulado, V)
+    esperado = "101010"
+    assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
 
 def test_manchesterDecoder():
     bits = [1, 0, 1, 0, 1, 0]
-    V = 1
-    sinal_modulado = tx.manchesterCoder(bits, V)
-    esperado = [V, -V, -V, V, V, -V, -V, V, V, -V, -V, V]
-    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+    sinal_modulado = tx.manchesterCoder(bits)
+    sinal_demodulado = rx.manchesterDecoder(sinal_modulado)
+    esperado = "101010"
+    assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
 
 def test_bipolarDecoder():
     bits = [1, 0, 1, 0, 1, 0, 1, 1]
-    sinal_modulado = tx.bipolarCoder(bits)
-    esperado = [1, 0, -1, 0, 1, 0, -1, 1]
-    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+    V = 1
+    sinal_modulado = tx.bipolarCoder(bits, V)
+    sinal_demodulado = rx.bipolarDecoder(sinal_modulado, V)
+    esperado = "10101011"
+    assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
 
 ################################################################################
 # Detecção de erros
@@ -142,6 +145,9 @@ def rodar_todos_os_testes():
     test_chCountUnframing()
     test_byteInsertionUnframing()
     test_bitInsertionUnframing()
+    test_polarNRZDecoder()
+    test_manchesterDecoder()
+    test_bipolarDecoder()
     test_checkEvenParity()
     print("Todos os testes passaram com sucesso.")
 
