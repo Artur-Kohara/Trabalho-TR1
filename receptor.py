@@ -294,3 +294,26 @@ class Receptor:
             i += 1
 
         return cleaned_data
+    
+################################################################################
+# Detecção de erros
+################################################################################
+
+    def checkEvenParityBit(self, bitStream):
+        '''
+        Verifica se a soma dos bits 1 é par. Ao adicionar o bit de paridade, a soma é par se não houver erro
+        bitstream: Lista de bits
+        return: True se a paridade estiver correta, False se a paridade estiver incorreta
+        '''
+        # Pega o último bit da lista (bit de paridade)
+        parity_bit = bitStream[-1]
+        # Recalcula a paridade do trem de bits original (sem o último bit de paridade)
+        sum_ones = sum(bitStream[:-1])
+        # 0 se for par, 1 se for ímpar
+        parity = sum_ones % 2
+
+        # Compara se o bit de paridade enviado bate com a paridade do trem de bits
+        if parity == parity_bit:
+            return True
+        else:
+            return False

@@ -116,6 +116,22 @@ def test_bipolarDecoder():
     assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
 
 ################################################################################
+# Detecção de erros
+################################################################################
+
+def test_checkEvenParity():
+    bits = [1, 0, 1, 0, 1, 1]
+    bits_pareados = tx.addEvenParityBit(bits)
+    # esperado = [1, 0, 1, 0, 1, 1, 0]
+    check_parity = rx.checkEvenParityBit(bits_pareados)
+    assert check_parity == True, f"Esperado {True}, mas retornou {check_parity}"
+
+    wrong_paired_bits = [1, 0, 1, 0, 1, 0]
+    check_parity = rx.checkEvenParityBit(wrong_paired_bits)
+    assert check_parity == True, f"Esperado {False}, mas retornou {check_parity}"
+
+
+################################################################################
 # Roda todos os testes
 ################################################################################
 
