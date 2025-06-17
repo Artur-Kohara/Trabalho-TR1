@@ -128,7 +128,7 @@ def test_checkEvenParity():
 
     wrong_paired_bits = [1, 0, 1, 0, 1, 0]
     check_parity = rx.checkEvenParityBit(wrong_paired_bits)
-    assert check_parity == True, f"Esperado {False}, mas retornou {check_parity}"
+    assert check_parity == False, f"Esperado {False}, mas retornou {check_parity}"
 
 
 ################################################################################
@@ -142,6 +142,7 @@ def rodar_todos_os_testes():
     test_chCountUnframing()
     test_byteInsertionUnframing()
     test_bitInsertionUnframing()
+    test_checkEvenParity()
     print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":
