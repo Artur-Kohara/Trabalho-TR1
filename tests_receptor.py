@@ -47,7 +47,7 @@ def test_demodule_fsk():
     original_bits_str = ''.join(str(b) for b in original_bits)
     assert demodulated_bits == original_bits_str, "Erro na demodulação FSK"
 
-def test_QAM8_modulation_demodulation():
+def test_QAM8_demodulation():
 
     # Bits de teste: escolha uma sequência conhecida ou aleatória
     original_bits = [0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1]  # 12 bits (4 símbolos de 3 bits)
@@ -142,6 +142,7 @@ def rodar_todos_os_testes():
     test_bits2Text()
     test_demodule_ask()
     test_demodule_fsk()
+    test_QAM8_demodulation()
     test_chCountUnframing()
     test_byteInsertionUnframing()
     test_bitInsertionUnframing()
