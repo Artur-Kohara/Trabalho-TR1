@@ -178,10 +178,10 @@ class Receptor:
         
         return ''.join(bits)
     
-    def bipolarDecoder(self, signal, V=1):
+    def bipolarDecoder(self, signal):
         """
         Decodifica um sinal bipolar AMI
-        signal: lista de amplitudes (valores como 0, +V ou -V)
+        signal: lista de amplitudes (valores como 0, +1 ou -1)
         V: valor da amplitude (padrão: 1)
         return: string de bits decodificados
         """

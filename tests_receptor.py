@@ -114,7 +114,7 @@ def test_bipolarDecoder():
     bits = [1, 0, 1, 0, 1, 0, 1, 1]
     V = 1
     sinal_modulado = tx.bipolarCoder(bits, V)
-    sinal_demodulado = rx.bipolarDecoder(sinal_modulado, V)
+    sinal_demodulado = rx.bipolarDecoder(sinal_modulado)
     esperado = "10101011"
     assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
 
