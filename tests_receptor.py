@@ -133,6 +133,16 @@ def test_checkEvenParity():
     check_parity = rx.checkEvenParityBit(wrong_paired_bits)
     assert check_parity == False, f"Esperado {False}, mas retornou {check_parity}"
 
+def test_checkCRC():
+    bits = [1,1,0,0, 1,0,1,0, 0,1,1,0]
+    bits_CRC = tx.addCRC(bits)
+    result = rx.checkCRC(bits_CRC)
+    assert result == True, f"Esperado {True}, mas retornou {result}"
+
+    wrong_CRC_bits = [1, 0, 1, 0, 0,1,1,1,1,1,1]
+    result = rx.checkCRC(wrong_CRC_bits)
+    assert result == False, f"Esperado {False}, mas retornou {result}"
+
 
 ################################################################################
 # Roda todos os testes
@@ -140,16 +150,21 @@ def test_checkEvenParity():
 
 def rodar_todos_os_testes():
     test_bits2Text()
+    # Demodulações (portadora)
     test_demodule_ask()
     test_demodule_fsk()
     test_QAM8_demodulation()
+    # Desenquadramento
     test_chCountUnframing()
     test_byteInsertionUnframing()
     test_bitInsertionUnframing()
+    # Demodulações (banda base)
     test_polarNRZDecoder()
     test_manchesterDecoder()
     test_bipolarDecoder()
+    # Detecção de erros
     test_checkEvenParity()
+    test_checkCRC()
     print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":

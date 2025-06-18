@@ -301,7 +301,7 @@ class Receptor:
     def checkEvenParityBit(self, bitStream):
         '''
         Verifica se a soma dos bits 1 é par. Ao adicionar o bit de paridade, a soma é par se não houver erro
-        bitstream: Lista de bits
+        bitstream: Lista de bits com o bit de paridade no final
         return: True se a paridade estiver correta, False se a paridade estiver incorreta
         '''
         # Pega o último bit da lista (bit de paridade)
@@ -313,6 +313,30 @@ class Receptor:
 
         # Compara se o bit de paridade enviado bate com a paridade do trem de bits
         if parity == parity_bit:
+            return True
+        else:
+            return False
+        
+    def checkCRC(self, bitStream):
+        '''
+        Verifica se o bitStream tem o CRC correto
+        bitStream: Lista de bits com o CRC no final
+        return: True se o CRC estiver correto, False se o CRC estiver incorreto
+        '''
+        gen_poly = [1,0,0,0, 0,1,1,1]
+        degree = len(gen_poly) - 1 #Grau do polinômio
+
+        for i in range((len(bitStream)) - degree):
+            #Se o bit atual for 1, faz XOR com cada bit do polinômio gerador
+            if bitStream[i] == 1:
+                for j in range (len(gen_poly)): 
+                    bitStream[i+j] = bitStream[i+j] ^ gen_poly[j]
+
+        #Os últimos 7 bits (grau) do dividendo são o resto da divisão
+        remainder = bitStream[-degree:]
+
+        # Se o resto for igual a zero, o CRC está correto
+        if remainder == [0] * degree:
             return True
         else:
             return False
