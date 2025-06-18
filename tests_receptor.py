@@ -8,30 +8,69 @@ rx = Receptor(config)
 tx = Transmitter(config)
 
 def test_bits2Text():
-    bits = "0100100001100101011011000110110001101111"  # "Hello"
+    bits = tx.text2Binary("Hello")
     resultado = rx.bits2Text(bits)
     assert resultado == "Hello", f"Esperado 'Hello', mas retornou '{resultado}'"
 
+################################################################################
+# Demodulação (portadora)
+################################################################################
+
 def test_demodule_ask():
-    # Sinal ASK com 3 bits: "101"
-    bps = 100
-    onda = np.sin(2 * np.pi * 1000 * np.linspace(0, 0.01, bps, endpoint=False))
-    zero = np.zeros(bps)
-    sinal = np.concatenate([onda, zero, onda])
-    resultado = rx.demodule_ask(sinal, bit_samples=bps)
-    assert resultado == "101", f"Esperado '101', mas retornou '{resultado}'"
+
+    original_bits = [1, 0, 1, 1, 0, 0, 1]
+    amplitude = 1.0
+    frequency = 5  # em Hz ou unidades relativas a 100 amostras por bit
+
+    # Modula os bits
+    modulated_signal = tx.ASK(original_bits, amplitude, frequency)
+
+    # Demodula o sinal
+    demodulated_bits = rx.demoduleASK(modulated_signal)
+
+    # Converte os bits originais para string para comparar
+    original_bits_str = ''.join(str(b) for b in original_bits)
+
+    assert demodulated_bits == original_bits_str, "Erro na demodulação ASK"
 
 def test_demodule_fsk():
-    bits = "101"
-    f0, f1, fs, dur = 1000, 2000, 10000, 0.01
-    t = np.linspace(0, dur, int(fs * dur), endpoint=False)
-    sinal = []
-    for bit in bits:
-        f = f1 if bit == "1" else f0
-        sinal.extend(np.sin(2 * np.pi * f * t))
-    sinal = np.array(sinal)
-    resultado = rx.demodule_fsk(sinal, f0=f0, f1=f1, fs=fs, dur=dur)
-    assert resultado == "101", f"Esperado '101', mas retornou '{resultado}'"
+    original_bits = [1, 0, 1, 1, 0, 0, 1]
+    A = 1.0
+    f0 = 5  # Frequência para bit 0
+    f1 = 10  # Frequência para bit 1
+    bit_samples = 100  # Número de amostras por bit
+    # Modula os bits
+    modulated_signal = tx.FSK(original_bits, A, f1, f0)
+    # Demodula o sinal
+    demodulated_bits = rx.demoduleFSK(modulated_signal, f0, f1, A, bit_samples)
+    # Converte os bits originais para string para comparar
+    original_bits_str = ''.join(str(b) for b in original_bits)
+    assert demodulated_bits == original_bits_str, "Erro na demodulação FSK"
+
+def test_QAM8_modulation_demodulation():
+
+    # Bits de teste: escolha uma sequência conhecida ou aleatória
+    original_bits = [0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1]  # 12 bits (4 símbolos de 3 bits)
+    amplitude = 1.0
+    frequency = 5  # relativa às 100 amostras por símbolo
+
+    # Modulação
+    modulated_signal = tx.QAM8(original_bits.copy(), amplitude, frequency)
+
+    # Demodulação
+    demodulated_bits_str = rx.demodule8QAM(modulated_signal, A=amplitude, f=frequency)
+
+    # Converte original para string para comparação
+    padded_bits = original_bits.copy()
+    while len(padded_bits) % 3 != 0:
+        padded_bits.append(0)
+    expected_bits_str = ''.join(str(b) for b in padded_bits)
+
+    assert demodulated_bits_str == expected_bits_str, "Erro na demodulação 8-QAM"
+
+################################################################################
+# Desenquadramento
+################################################################################
 
 def test_chCountUnframing():
     frame_data = [1, 0, 1, 0, 1, 0, 1, 0]  # 8 bits
@@ -51,6 +90,34 @@ def test_bitInsertionUnframing():
     frame = tx.bitInsertionFraming(original_bits, frame_size=8)[0]
     desenquadrado = rx.bitInsertionUnframing([frame])
     assert desenquadrado == "11111000", f"Esperado '11111000', mas retornou '{desenquadrado}'"
+
+################################################################################
+# Demodulação (banda base)
+################################################################################
+
+def test_polarNRZDecoder():
+    bits = [1, 0, 1, 0, 1, 0]
+    V = 1
+    sinal_modulado = tx.polarNRZCoder(bits, V)
+    esperado = [V, -V, V, -V, V, -V]
+    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+
+def test_manchesterDecoder():
+    bits = [1, 0, 1, 0, 1, 0]
+    V = 1
+    sinal_modulado = tx.manchesterCoder(bits, V)
+    esperado = [V, -V, -V, V, V, -V, -V, V, V, -V, -V, V]
+    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+
+def test_bipolarDecoder():
+    bits = [1, 0, 1, 0, 1, 0, 1, 1]
+    sinal_modulado = tx.bipolarCoder(bits)
+    esperado = [1, 0, -1, 0, 1, 0, -1, 1]
+    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+
+################################################################################
+# Roda todos os testes
+################################################################################
 
 def rodar_todos_os_testes():
     test_bits2Text()
