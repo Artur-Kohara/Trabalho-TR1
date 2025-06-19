@@ -133,20 +133,6 @@ class Transmitter:
 
   
   #############################################
-  # Protocolos de detecção de erros
-  #############################################
-  '''
-  #Protocolo bit de paridade par
-  def bitParity(self,):
-
-  #Protocolo CRC
-  def CRC(self,):
-
-  #Protocolo Hamming
-  def Hamming(sefl,):
-  '''
-
-  #############################################
   # Modulação digital (banda base) 
   #############################################
 
@@ -306,5 +292,38 @@ class Transmitter:
     crc = dividend[-degree:]
     return bitStream + crc
 
+  #Calcula e adiciona os bits de paridade nas posições que são potências de 2
+  #Recebe trem de bits (lista de bits)
+  #Retorna o trem de bits, com os bits de paridade adicionados nas posições corretas
   def addHamming(self, bitStream):
-    return 0
+    #Calcula o número de bits de paridades necessários
+    for p in range(len(bitStream)):
+      if (2**p >= len(bitStream) + p + 1): #Precisamos que 2**p seja pelo menos igual ao tamanho total após o hamming + 1 (caso em que não ha erro) para codificar todas as posições de erro
+        num_parity_bits = p
+        break
+
+    #Insere zeros nas posições que são potências de 2
+    for i in range(num_parity_bits):
+      bitStream.insert((2**i)-1,0) #-1 pq indexação começa em 0 
+
+    #Tamanho total depois da inserção dos bits de paridade
+    n = len(bitStream)
+
+    #Calcula os valores dos bits de paridade
+    #Para cada bit de paridade, faz XOR dos bits que ele cobre
+    for i in range(num_parity_bits):
+      parity_pos = 2**i -1
+      parity = 0
+
+      #Percorre todas as posições do bitStream (indexação 1 para facilitar o cálculo)
+      for j in range(1, n+1):
+        #Verifica se a posição j (em binário) do bitStream tem o i-ésimo bit setado 
+        #Condição é verdadeira para qualquer número diferente de zero. Ex: 010 & 010 = 010, que é != 0, então entra no if
+        if j & (1<<i): #& faz and bit a bit. j está na sua representação binária. 1<<i desloca 1 i vezes à esquerda
+          parity ^= bitStream[j-1] #j-1 para ajustar a indexação em 0
+
+      #Atualiza paridade no bit de posição parity_pos
+      bitStream[parity_pos] = parity 
+
+    return bitStream
+
