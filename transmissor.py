@@ -297,10 +297,11 @@ class Transmitter:
   #Retorna o trem de bits, com os bits de paridade adicionados nas posições corretas
   def addHamming(self, bitStream):
     #Calcula o número de bits de paridades necessários
-    for p in range(len(bitStream)):
-      if (2**p >= len(bitStream) + p + 1): #Precisamos que 2**p seja pelo menos igual ao tamanho total após o hamming + 1 (caso em que não ha erro) para codificar todas as posições de erro
-        num_parity_bits = p
-        break
+    m = len(bitStream)
+    p = 0
+    while 2**p < m + p + 1: #Precisamos que 2**p seja pelo menos igual ao tamanho total após o hamming + 1 (caso em que não ha erro) para codificar todas as posições de erro
+        p += 1
+    num_parity_bits = p
 
     #Insere zeros nas posições que são potências de 2
     for i in range(num_parity_bits):
@@ -309,14 +310,15 @@ class Transmitter:
     #Tamanho total depois da inserção dos bits de paridade
     n = len(bitStream)
 
-    #Calcula os valores dos bits de paridade
+    #Calcula cada bit de paridade
     #Para cada bit de paridade, faz XOR dos bits que ele cobre
     for i in range(num_parity_bits):
       parity_pos = 2**i -1
       parity = 0
 
       #Percorre todas as posições do bitStream (indexação 1 para facilitar o cálculo)
-      for j in range(1, n+1):
+      #parity_pos +1 pq: ex: i = 2, parity_pos = 3, os bits que i cobre são 100, 101, 110 e 111, todos começam a partir de 100(4) = parity_pos + 1
+      for j in range(parity_pos+1, n+1):  
         #Verifica se a posição j (em binário) do bitStream tem o i-ésimo bit setado 
         #Condição é verdadeira para qualquer número diferente de zero. Ex: 010 & 010 = 010, que é != 0, então entra no if
         if j & (1<<i): #& faz and bit a bit. j está na sua representação binária. 1<<i desloca 1 i vezes à esquerda

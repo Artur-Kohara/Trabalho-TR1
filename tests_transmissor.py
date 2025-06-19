@@ -311,6 +311,43 @@ def test_addCRC():
   # Os últimos 7 bits devem ser zeros
   print(f"Verificação round-trip: {verification[-7:]} | Esperado: [0,0,0,0,0,0,0] | {'✅' if all(b == 0 for b in verification[-7:]) else '❌'}\n")
 
+def test_addHamming():
+  transmitter = Transmitter({})
+  
+  # Teste 1: 4 bits de dados -> 3 bits de paridade (7 bits totais)
+  bits = [1, 0, 1, 1]
+  result = transmitter.addHamming(bits)
+  expected = [0, 1, 1, 0, 0, 1, 1]
+  print(f"addHamming(4 bits): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+
+  # Teste 2: 7 bits de dados -> 4 bits de paridade (11 bits totais)
+  bits = [1, 1, 0, 1, 0, 0, 1]
+  result = transmitter.addHamming(bits)
+  expected = [0,1,1, 0, 1, 0, 1,1, 0, 0, 1]
+  print(f"addHamming(7 bits): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+
+  # Teste 3: 7 bits de dados -> 4 bits de paridade (11 bits totais)
+  bits = [1, 0, 0, 1, 1, 0, 1]
+  result = transmitter.addHamming(bits)
+  expected = [0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1]
+  print(f"addHamming(7 bits): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste 4: 1 bit de dados -> 2 bits de paridade (3 bits totais)
+  bits = [1]
+  result = transmitter.addHamming(bits)
+  # Estrutura: P1 P2 D1
+  # P1 (pos 1): bit 1,3 -> 1
+  # P2 (pos 2): bit 2,3 -> 1
+  expected = [1, 1, 1]
+  print(f"addHamming(1 bit): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
+  
+  # Teste 5: 8 bits de dados -> 4 bits de paridade (12 bits totais)
+  bits = [1, 1, 0, 0, 1, 0, 1, 0]
+  result = transmitter.addHamming(bits)
+  print(f"addHamming(8 bits): Tamanho={len(result)} | Esperado: 12 | {'✅' if len(result) == 12 else '❌'}")
+  
+
+
 
 ################################################
 # Chama as funções de teste
@@ -337,3 +374,4 @@ if __name__ == "__main__":
   #Detecção de erro
   test_addEvenParityBit() #OK
   test_addCRC() #Acho que OK
+  test_addHamming() #OK
