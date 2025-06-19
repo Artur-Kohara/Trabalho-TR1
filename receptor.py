@@ -13,14 +13,15 @@ class Receptor:
     def bits2Text(self, bits):
         # Pega o trem de bits e separa em blocos de 8 bits(1 byte)
         chars = [bits[i:i+8] for i in range(0, len(bits), 8)]
+        chars = [''.join(map(str, b)) for b in chars]  # Converte cada bloco de bits para string
         # Transforma cada bloco de bits em um inteiro e depois em um caractere (ASCII)
         return ''.join(chr(int(b, 2)) for b in chars)
     
 ################################################################################
-# Demodulação de sinais
+# Demodulação (portadora)
 ################################################################################
 
-    def demodule_ask(self, signal, bit_samples=100, treshold=0.1):
+    def demoduleASK(self, signal, bit_samples=100, treshold=0.1):
         """
         signal: array de float, contendo o signal modulado ASK
         bit_samples: número de amostras por bit
@@ -29,11 +30,11 @@ class Receptor:
         """
         bits = []
 
-        # Percorre o signal em segmentos de tamanho bit_samples
+        # Percorre o signal em segments de tamanho bit_samples
         for i in range(0, len(signal), bit_samples):
-            # Extrai um segmento (correspondente a um bit)
+            # Extrai um segment (correspondente a um bit)
             segment = signal[i:i+bit_samples]
-            # Cálculo de energia média do segmento (eleva ao quadrado cada amostra e tira a média)
+            # Cálculo de energia média do segment (eleva ao quadrado cada amostra e tira a média)
             energy = np.mean(np.square(segment))
 
             if energy > treshold:
@@ -43,42 +44,156 @@ class Receptor:
 
         return ''.join(bits)
 
-    def demodule_fsk(self, signal, f0=1000, f1=2000, fs=10000, dur=0.01):
+    def demoduleFSK(self, signal, f0, f1, A=1, bit_samples=100):
         """
-        signal: np.array com o sinal FSK recebido
-        f0: frequência do bit 0
-        f1: frequência do bit 1
-        fs: taxa de amostragem
-        dur: duração de um bit (em segundos)
-        return: string com os bits demodulados
+        Demodula um sinal FSK.
+
+        signal: vetor de floats com o sinal modulado FSK
+        f0: frequência associada ao bit 0
+        f1: frequência associada ao bit 1
+        A: amplitude da portadora (mesmo usado na modulação)
+        bit_samples: número de amostras por bit (padrão: 100)
+        return: string de bits decodificados
         """
-        n = int(fs * dur)  # número de amostras por bit
         bits = []
+        # Vetor de tempo normalizado de 0 até (quase) 1, com bit_samples amostras
+        # Isso representa o tempo de um bit, dividido em partes iguais
+        t = np.array([j / bit_samples for j in range(bit_samples)])
 
-        # Vetor de tempo para instantes uniformemente espaçados de 0 a dur (dur excluído) para as amostras
-        t = np.linspace(0, dur, n, endpoint=False)
+        # Sinais senoidais de referência para as frequências f0 e f1
+        ref_0 = A * np.sin(2 * np.pi * f0 * t)
+        ref_1 = A * np.sin(2 * np.pi * f1 * t)
 
-        # Vetores ref_0 e ref_1 são sinais senoidais de referência para as frequências f0 e f1
-        ref_0 = np.sin(2 * np.pi * f0 * t)
-        ref_1 = np.sin(2 * np.pi * f1 * t)
-
-        # O sinal FSK é dividido em segmentos de n amostras (cada um correspondendo a um bit)
-        for i in range(0, len(signal), n):
-            segment = signal[i:i+n]
-            if len(segment) < n:
+        # O sinal é percorrido em blocos de bit_samples amostras, cada um representando um bit
+        for i in range(0, len(signal), bit_samples):
+            segment = signal[i:i + bit_samples]
+            # Garante que o último segmento tenha tamanho suficiente (evita erros com pedaços incompletos)
+            if len(segment) < bit_samples:
                 break
 
             # Para cada segmento, calcula-se o produto escalar (correlação) com os sinais de referência
-            # (mede a semelhança entre o segmento do sinal recebido e os sinais senoidais de f0 e f1
+            # Se o sinal tem frequência próxima de f1, a correlação com ref_1 será maior (em valor absoluto)
+            # Se for f0, a correlação com ref_0 será maior
             cor_0 = np.dot(segment, ref_0)
             cor_1 = np.dot(segment, ref_1)
 
-            # Se a correlação com ref_1 for maior, a frequência predominante é f1 → bit "1"
-            # Caso contrário, é f0 → bit "0"
-            if abs(cor_1) > abs(cor_0):
-                bits.append("1")
-            else:
+            # Compara a semelhança do sinal com cada referência.
+            # O bit é 1 se o sinal se parece mais com f1; senão, é 0.
+            bit = "1" if abs(cor_1) > abs(cor_0) else "0"
+            bits.append(bit)
+
+        return ''.join(bits)
+    
+    def demodule8QAM(self, signal, A=1, f=1000, symbol_samples=100):
+        """
+        Demodula um sinal 8-QAM.
+        signal: np.array com o sinal QAM
+        A: amplitude usada na modulação
+        f: frequência da portadora
+        symbol_samples: número de amostras por símbolo (padrão: 100)
+        return: string com os bits demodulados
+        """
+        bits = []
+        # Vetor de tempo normalizado no intervalo [0, 1) com symbol_samples amostras
+        t = np.arange(symbol_samples) / symbol_samples
+        cos_wave = np.cos(2 * np.pi * f * t)
+        sin_wave = np.sin(2 * np.pi * f * t)
+
+        # Mapa reverso: de (I, Q) → bits
+        constellation = {
+            (A, 0):     (0, 0, 0),
+            (A, A):     (0, 0, 1),
+            (0, A):     (0, 1, 1),
+            (-A, A):    (0, 1, 0),
+            (-A, 0):    (1, 1, 0),
+            (-A, -A):   (1, 1, 1),
+            (0, -A):    (1, 0, 1),
+            (A, -A):    (1, 0, 0),
+        }
+
+        # Extrai símbolos do sinal, cada símbolo tem symbol_samples amostras
+        # Verifica se há amostras suficientes
+        for i in range(0, len(signal), symbol_samples):
+            s = signal[i:i+symbol_samples]
+            if len(s) < symbol_samples:
+                break
+
+            # Estima I e Q por correlação com cosseno e seno
+            # (multiplica por 2 / symbol_samples → normalização da correlação)
+            I = np.dot(s, cos_wave) * 2 / symbol_samples
+            Q = -np.dot(s, sin_wave) * 2 / symbol_samples  # sinal negativo por definição da modulação
+
+            # Arredondar para múltiplos válidos de A (−A, 0, A)
+            I_hat = A * round(I / A)
+            Q_hat = A * round(Q / A)
+
+            # Tratar casos extremos com pequena margem de erro numérica
+            # Garante que I_hat e Q_hat estejam dentro dos limites da constelação
+            # I_hat e Q_hat devem estar entre -A e A
+            I_hat = max(min(I_hat, A), -A)
+            Q_hat = max(min(Q_hat, A), -A)
+
+            # Usa o dicionário da constelação para recuperar os 3 bits correspondentes ao símbolo detectado
+            bits_tuple = constellation.get((I_hat, Q_hat))
+
+            bits.extend(bits_tuple)
+
+        return ''.join(str(b) for b in bits)
+    
+################################################################################
+# Demodulação (banda base)
+################################################################################
+
+    def polarNRZDecoder(self, signal, V=1):
+        """
+        Decodifica um sinal modulado polar NRZ
+        signal: lista de amplitudes do sinal modulado
+        V: amplitude do sinal (padrão = 1)
+        return: string com o trem de bits decodificado
+        """
+        bits = []
+        for amplitude in signal:
+            if amplitude >= V:
+                bits.append('1')
+            elif amplitude <= -V:
+                bits.append('0')
+        
+        return ''.join(bits)
+    
+    def manchesterDecoder(self, signal, V=1):
+        """
+        Decodifica um sinal modulado Manchester
+        signal: lista de amplitudes do sinal modulado
+        V: amplitude do sinal (padrão = 1)
+        return: string com o trem de bits decodificado
+        """
+        bits = []
+        # Itera sobre os índices do sinal, de 2 em 2, porque cada bit codificado ocupa dois valores no sinal
+        for i in range(0, len(signal), 2):
+            # Se a primeira metade está alta (+V) e a segunda está baixa (-V), representa um bit 1
+            if signal[i] >= V and signal[i + 1] <= -V:
+                bits.append('1')
+            #Se a primeira metade está baixa (-V) e a segunda está alta (+V), representa um bit 0
+            elif signal[i] <= -V and signal[i + 1] >= V:
+                bits.append('0')
+        
+        return ''.join(bits)
+    
+    def bipolarDecoder(self, signal, V=1):
+        """
+        Decodifica um sinal bipolar AMI
+        signal: lista de amplitudes (valores como 0, +V ou -V)
+        V: valor da amplitude (padrão: 1)
+        return: string de bits decodificados
+        """
+        bits = []
+
+        for i in range(0, len(signal), 2):
+            a, b = signal[i], signal[i+1]
+            if a == 0 and b == 0:
                 bits.append("0")
+            elif abs(a) == V and b == 0:
+                bits.append("1")
 
         return ''.join(bits)
 
