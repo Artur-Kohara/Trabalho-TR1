@@ -143,6 +143,17 @@ def test_checkCRC():
     result = rx.checkCRC(wrong_CRC_bits)
     assert result == False, f"Esperado {False}, mas retornou {result}"
 
+def test_checkHamming():
+    bits = [1, 0, 1, 0, 1, 1]
+    bits_hamming = tx.addHamming(bits)
+    result = rx.checkHamming(bits_hamming)
+    esperado = ("101011", 0)
+    assert result == esperado, f"Esperado {esperado}, mas retornou {result}"
+
+    bits_hamming_wrong = [0,1,1,0,0,0,1,1,0,0,1]
+    result = rx.checkHamming(bits_hamming_wrong)
+    esperado = ("1101001", 5)
+    assert result == esperado, f"Esperado {esperado}, mas retornou {result}"
 
 ################################################################################
 # Roda todos os testes
@@ -165,6 +176,7 @@ def rodar_todos_os_testes():
     # Detecção de erros
     test_checkEvenParity()
     test_checkCRC()
+    test_checkHamming()
     print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":
