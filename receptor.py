@@ -160,39 +160,38 @@ class Receptor:
         
         return ''.join(bits)
     
-    def manchesterDecoder(self, signal, V=1):
+    def manchesterDecoder(self, signal):
         """
         Decodifica um sinal modulado Manchester
         signal: lista de amplitudes do sinal modulado
-        V: amplitude do sinal (padrão = 1)
         return: string com o trem de bits decodificado
         """
         bits = []
         # Itera sobre os índices do sinal, de 2 em 2, porque cada bit codificado ocupa dois valores no sinal
         for i in range(0, len(signal), 2):
-            # Se a primeira metade está alta (+V) e a segunda está baixa (-V), representa um bit 1
-            if signal[i] >= V and signal[i + 1] <= -V:
+            # Se a primeira metade está alta (1) e a segunda está baixa (0), representa um bit 1
+            if (signal[i] == 1) and (signal[i + 1] == 0):
                 bits.append('1')
-            #Se a primeira metade está baixa (-V) e a segunda está alta (+V), representa um bit 0
-            elif signal[i] <= -V and signal[i + 1] >= V:
+            #Se a primeira metade está baixa (0) e a segunda está alta (1), representa um bit 0
+            elif (signal[i] == 0) and (signal[i + 1] == 1):
                 bits.append('0')
         
         return ''.join(bits)
     
-    def bipolarDecoder(self, signal, V=1):
+    def bipolarDecoder(self, signal):
         """
         Decodifica um sinal bipolar AMI
-        signal: lista de amplitudes (valores como 0, +V ou -V)
+        signal: lista de amplitudes (valores como 0, +1 ou -1)
         V: valor da amplitude (padrão: 1)
         return: string de bits decodificados
         """
         bits = []
 
-        for i in range(0, len(signal), 2):
-            a, b = signal[i], signal[i+1]
-            if a == 0 and b == 0:
+        for i in range(0, len(signal)):
+            bit = signal[i]
+            if bit == 0:
                 bits.append("0")
-            elif abs(a) == V and b == 0:
+            else:
                 bits.append("1")
 
         return ''.join(bits)
@@ -294,3 +293,50 @@ class Receptor:
             i += 1
 
         return cleaned_data
+    
+################################################################################
+# Detecção de erros
+################################################################################
+
+    def checkEvenParityBit(self, bitStream):
+        '''
+        Verifica se a soma dos bits 1 é par. Ao adicionar o bit de paridade, a soma é par se não houver erro
+        bitstream: Lista de bits com o bit de paridade no final
+        return: True se a paridade estiver correta, False se a paridade estiver incorreta
+        '''
+        # Pega o último bit da lista (bit de paridade)
+        parity_bit = bitStream[-1]
+        # Recalcula a paridade do trem de bits original (sem o último bit de paridade)
+        sum_ones = sum(bitStream[:-1])
+        # 0 se for par, 1 se for ímpar
+        parity = sum_ones % 2
+
+        # Compara se o bit de paridade enviado bate com a paridade do trem de bits
+        if parity == parity_bit:
+            return True
+        else:
+            return False
+        
+    def checkCRC(self, bitStream):
+        '''
+        Verifica se o bitStream tem o CRC correto
+        bitStream: Lista de bits com o CRC no final
+        return: True se o CRC estiver correto, False se o CRC estiver incorreto
+        '''
+        gen_poly = [1,0,0,0, 0,1,1,1]
+        degree = len(gen_poly) - 1 #Grau do polinômio
+
+        for i in range((len(bitStream)) - degree):
+            #Se o bit atual for 1, faz XOR com cada bit do polinômio gerador
+            if bitStream[i] == 1:
+                for j in range (len(gen_poly)): 
+                    bitStream[i+j] = bitStream[i+j] ^ gen_poly[j]
+
+        #Os últimos 7 bits (grau) do dividendo são o resto da divisão
+        remainder = bitStream[-degree:]
+
+        # Se o resto for igual a zero, o CRC está correto
+        if remainder == [0] * degree:
+            return True
+        else:
+            return False

@@ -47,7 +47,7 @@ def test_demodule_fsk():
     original_bits_str = ''.join(str(b) for b in original_bits)
     assert demodulated_bits == original_bits_str, "Erro na demodulação FSK"
 
-def test_QAM8_modulation_demodulation():
+def test_QAM8_demodulation():
 
     # Bits de teste: escolha uma sequência conhecida ou aleatória
     original_bits = [0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 1]  # 12 bits (4 símbolos de 3 bits)
@@ -99,21 +99,50 @@ def test_polarNRZDecoder():
     bits = [1, 0, 1, 0, 1, 0]
     V = 1
     sinal_modulado = tx.polarNRZCoder(bits, V)
-    esperado = [V, -V, V, -V, V, -V]
-    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+    sinal_demodulado = rx.polarNRZDecoder(sinal_modulado, V)
+    esperado = "101010"
+    assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
 
 def test_manchesterDecoder():
     bits = [1, 0, 1, 0, 1, 0]
-    V = 1
-    sinal_modulado = tx.manchesterCoder(bits, V)
-    esperado = [V, -V, -V, V, V, -V, -V, V, V, -V, -V, V]
-    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+    sinal_modulado = tx.manchesterCoder(bits)
+    sinal_demodulado = rx.manchesterDecoder(sinal_modulado)
+    esperado = "101010"
+    assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
 
 def test_bipolarDecoder():
     bits = [1, 0, 1, 0, 1, 0, 1, 1]
-    sinal_modulado = tx.bipolarCoder(bits)
-    esperado = [1, 0, -1, 0, 1, 0, -1, 1]
-    assert sinal_modulado == esperado, f"Esperado {esperado}, mas retornou {sinal_modulado}"
+    V = 1
+    sinal_modulado = tx.bipolarCoder(bits, V)
+    sinal_demodulado = rx.bipolarDecoder(sinal_modulado)
+    esperado = "10101011"
+    assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
+
+################################################################################
+# Detecção de erros
+################################################################################
+
+def test_checkEvenParity():
+    bits = [1, 0, 1, 0, 1, 1]
+    bits_pareados = tx.addEvenParityBit(bits)
+    # esperado = [1, 0, 1, 0, 1, 1, 0]
+    check_parity = rx.checkEvenParityBit(bits_pareados)
+    assert check_parity == True, f"Esperado {True}, mas retornou {check_parity}"
+
+    wrong_paired_bits = [1, 0, 1, 0, 1, 0]
+    check_parity = rx.checkEvenParityBit(wrong_paired_bits)
+    assert check_parity == False, f"Esperado {False}, mas retornou {check_parity}"
+
+def test_checkCRC():
+    bits = [1,1,0,0, 1,0,1,0, 0,1,1,0]
+    bits_CRC = tx.addCRC(bits)
+    result = rx.checkCRC(bits_CRC)
+    assert result == True, f"Esperado {True}, mas retornou {result}"
+
+    wrong_CRC_bits = [1, 0, 1, 0, 0,1,1,1,1,1,1]
+    result = rx.checkCRC(wrong_CRC_bits)
+    assert result == False, f"Esperado {False}, mas retornou {result}"
+
 
 ################################################################################
 # Roda todos os testes
@@ -121,11 +150,21 @@ def test_bipolarDecoder():
 
 def rodar_todos_os_testes():
     test_bits2Text()
+    # Demodulações (portadora)
     test_demodule_ask()
     test_demodule_fsk()
+    test_QAM8_demodulation()
+    # Desenquadramento
     test_chCountUnframing()
     test_byteInsertionUnframing()
     test_bitInsertionUnframing()
+    # Demodulações (banda base)
+    test_polarNRZDecoder()
+    test_manchesterDecoder()
+    test_bipolarDecoder()
+    # Detecção de erros
+    test_checkEvenParity()
+    test_checkCRC()
     print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":
