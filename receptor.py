@@ -340,3 +340,61 @@ class Receptor:
             return True
         else:
             return False
+
+    def checkHamming(self, bitStream):
+        """
+        Verifica e corrige um erro de 1 bit usando código de Hamming
+        bitStream: lista de bits codificada com Hamming (incluindo paridade)
+        return: (string de bits corrigidos sem bits de paridade, posição do erro ou 0 se não houve erro)
+        """
+        n = len(bitStream)
+        # Armazeno o número de bits de paridade
+        p = 0
+        # Determina quantos bits de paridade existem com base no tamanho
+        while 2**p < n + 1:
+            p += 1
+
+        # Variável para armazenar a posição do erro caso exista
+        error_pos = 0
+
+        # Verifica cada bit de paridade
+        for i in range(p):
+            parity_pos = 2**i
+            parity = 0
+
+            # Percorre todas as posições do bitStream
+            for j in range(1, n+1):
+                # Faz "and" entre a posição atual e a posição de paridade
+                # Verifica se a potência de 2 (parity_pos) compõe a posição j
+                # (Usando o "and" ambos ficam em representação binária)
+                # Ex: 011(j) & 010(parity_pos=2) = 1, então entra no if (2 compõe o número 3)
+                if j & parity_pos:
+                    # Faz XOR do bit de paridade com o bit atual e salva o resultado da paridade
+                    parity ^= bitStream[j-1]
+
+            # Salva a posição do erro usando os bits de paridade diferentes de 0
+            if parity != 0:
+                error_pos += parity_pos
+
+        # Corrige o erro se necessário (error_pos > 0, ou seja, os bits de paridade deram diferente de 0)
+        if error_pos != 0 and error_pos <= n:
+            bitStream[error_pos - 1] ^= 1  # Inverte o bit errado
+
+        # Remove bits de paridade (posições de potência de 2)
+        corrected_bitStream = []
+        for i in range(1, n+1):
+            # Se a posição não é uma potência de 2, adiciona o bit ao stream corrigido
+            if not self._is_power_of_two(i):
+                corrected_bitStream.append(bitStream[i-1])
+
+        # Converte a lista de bits corrigidos para string
+        corrected_bitStream = ''.join(map(str, corrected_bitStream))
+        return corrected_bitStream, error_pos
+
+    # Função auxiliar que verifica se um número é uma potência de dois
+    def _is_power_of_two(self, x):
+        # Retorna True se x for uma potência de dois, False caso contrário
+        # Verifica se x é diferente de zero e faz "and" entre x e (x-1)
+        # Sempre que se faz "and" entre um número que é potência de dois e seu antecessor, o resultado é 0
+        # Exemplo: 4 (100) & 3 (011) = 0
+        return x != 0 and (x & (x - 1)) == 0
