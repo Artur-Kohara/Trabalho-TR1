@@ -1,10 +1,10 @@
 import numpy as np
-from receptor import Receptor
+from receptor import Receiver
 from transmissor import Transmitter
 
 # Configuração genérica para os testes
 config = {}
-rx = Receptor(config)
+rx = Receiver(config)
 tx = Transmitter(config)
 
 def test_bits2Text():

@@ -5,7 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
 import numpy as np
 from transmissor import Transmitter
-from receptor import Receptor
+from receptor import Receiver
 
 class InterfaceGTK(Gtk.Window):
     def __init__(self):

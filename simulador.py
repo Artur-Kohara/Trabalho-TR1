@@ -1,5 +1,5 @@
-from transmissor import Transmissor
-from receptor import Receptor
+from transmissor import Transmitter
+from receptor import Receiver
 
 def main():
     config = {
@@ -10,7 +10,7 @@ def main():
     'frequency': 0  # Frequência de operação, exemplo: 2.4 GHz
     }  
     tx = Transmissor(config)
-    rx = Receptor(config)
+    rx = Receiver(config)
 
 
     print(f"[Final] Recebido: {resultado}")
