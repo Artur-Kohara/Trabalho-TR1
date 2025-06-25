@@ -13,7 +13,7 @@ class InterfaceGTK(Gtk.Window):
     self.set_default_size(800, 600)
 
     self.config = {
-      'enquadramento': 'chCount',
+      'framing': 'chCount',
       'edc': 'paridade',
       'banda_base': 'nrz',
       'banda_passante': 'ask'
@@ -71,7 +71,7 @@ class InterfaceGTK(Gtk.Window):
 
     # Banda passante
     self.combo_bp = Gtk.ComboBoxText()
-    for bp in ["ask", "fsk", "qam"]:
+    for bp in ["ask", "fsk", "8qam"]:
       self.combo_bp.append_text(bp)
     self.combo_bp.set_active(0)
     vbox.pack_start(self.combo_bp, False, False, 0)
@@ -86,24 +86,147 @@ class InterfaceGTK(Gtk.Window):
     vbox.pack_start(btn_rx, False, False, 0)
 
   def on_transmit_clicked(self, button):
-    texto = self.entry.get_text()
-    self.config['enquadramento'] = self.combo_enq.get_active_text()
+    text = self.entry.get_text()
+
+    # Atualiza config com seleção do usuário
+    self.config['framing'] = self.combo_enq.get_active_text()
     self.config['edc'] = self.combo_edc.get_active_text()
     self.config['banda_base'] = self.combo_bb.get_active_text()
     self.config['banda_passante'] = self.combo_bp.get_active_text()
 
-    # TODO: executar o transmissor com as configs, gerar sinal
-    # Exemplo placeholder: onda senoidal simples
-    t = np.linspace(0, 1, 1000)
-    y = np.sin(2 * np.pi * 5 * t)
+    self.tx = Transmitter(self.config)
 
+    # 1️⃣ Texto para bits
+    bits = self.tx.text2Binary(text)
+
+    # 2️⃣ Enquadramento
+    frame_size = 32  # valor fixo ou configurable depois
+    if self.config['framing'] == 'chCount':
+        frames = self.tx.chCountFraming(bits, frame_size)
+    elif self.config['framing'] == 'byteInsertion':
+        frames = self.tx.byteInsertionFraming(bits, frame_size)
+    else:  # bitInsertion
+        frames = self.tx.bitInsertionFraming(bits, frame_size)
+
+    # Junta os frames em um único trem de bits
+    framed_bits = [bit for frame in frames for bit in frame]
+
+    # 3️⃣ EDC
+    if self.config['edc'] == 'paridade':
+        edc_bits = self.tx.addEvenParityBit(framed_bits)
+    elif self.config['edc'] == 'crc':
+        edc_bits = self.tx.addCRC(framed_bits)
+    else:  # hamming
+        edc_bits = self.tx.addHamming(framed_bits)
+
+    # 4️⃣ Banda base
+    if self.config['banda_base'] == 'nrz':
+        bb_signal = self.tx.polarNRZCoder(edc_bits)
+    elif self.config['banda_base'] == 'manchester':
+        bb_signal = self.tx.manchesterCoder(edc_bits)
+    else:  # bipolar
+        bb_signal = self.tx.bipolarCoder(edc_bits)
+
+    # 5️⃣ Banda passante
+    if self.config['banda_passante'] == 'ask':
+        mod_signal = self.tx.ASK(bb_signal, A=1, f=5)
+    elif self.config['banda_passante'] == 'fsk':
+        mod_signal = self.tx.FSK(bb_signal, A=1, f1=5, f2=10)
+    else:  # 8qam
+        mod_signal = self.tx.QAM8(bb_signal, A=1, f=5)
+
+    # Armazena para receptor
+    self.last_signal = mod_signal
+
+    # Plota
     self.ax.clear()
-    self.ax.plot(t, y)
+    self.ax.plot(mod_signal)
     self.canvas.draw()
 
   def on_receive_clicked(self, button):
-    # TODO: executar receptor, obter texto
-    self.result_label.set_text("Texto recebido: (simulação)")
+    if not hasattr(self, 'last_signal'):
+        self.result_label.set_text("Erro: Nenhum sinal transmitido!")
+        return
+
+    # Passo 1: demodulação
+    bp = self.config['banda_passante']
+    if bp == 'ask':
+        bits_bb_str = self.rx.demoduleASK(self.last_signal)
+    elif bp == 'fsk':
+        bits_bb_str = self.rx.demoduleFSK(self.last_signal, f0=1, f1=2)
+    elif bp == '8qam':
+        bits_bb_str = self.rx.demodule8QAM(self.last_signal)
+    else:
+        self.result_label.set_text("Erro: Modulação desconhecida")
+        return
+
+    # Converte bits_bb_str para lista de ints
+    bits_bb = [int(b) for b in bits_bb_str]
+
+    # Passo 2: decodificação banda base
+    bb = self.config['banda_base']
+    if bb == 'nrz':
+        bits_str = self.rx.polarNRZDecoder(bits_bb)
+    elif bb == 'manchester':
+        bits_str = self.rx.manchesterDecoder(bits_bb)
+    elif bb == 'bipolar':
+        bits_str = self.rx.bipolarDecoder(bits_bb)
+    else:
+        self.result_label.set_text("Erro: Codificação desconhecida")
+        return
+
+    # Converte para lista de ints
+    bits = [int(b) for b in bits_str]
+
+    # Passo 3: desenquadramento
+    # Primeiro transforma em lista de frames (ex: lista de listas de bits)
+    # Vamos supor que você tenha recebido frames já agrupados ou faça isso por outro método
+    # Aqui vamos simular que cada 16 bits são um frame (exemplo, ajuste se necessário)
+    frame_size = 32  # ou outro valor conforme seu protocolo
+    frames = [bits[i:i+frame_size] for i in range(0, len(bits), frame_size)]
+
+    fr = self.config['framing']
+    if fr == 'chCount':
+        desenq_str = self.rx.chCountUnframing(frames)
+    elif fr == 'byteInsertion':
+        desenq_str = self.rx.byteInsertionUnframing(frames)
+    elif fr == 'bitInsertion':
+        desenq_str = self.rx.bitInsertionUnframing(frames)
+    else:
+        self.result_label.set_text("Erro: Enquadramento desconhecido")
+        return
+
+    desenq_bits = [int(b) for b in desenq_str]
+
+    # Passo 4: EDC
+    edc = self.config['edc']
+    if edc == 'paridade':
+        ok = self.rx.checkEvenParityBit(desenq_bits)
+        if not ok:
+            self.result_label.set_text("Erro de paridade detectado!")
+            return
+        bits_final = desenq_bits[:-1]
+    elif edc == 'crc':
+        ok = self.rx.checkCRC(desenq_bits.copy())  # passa cópia, pois o método altera
+        if not ok:
+            self.result_label.set_text("Erro de CRC detectado!")
+            return
+        bits_final = desenq_bits[:-7]  # remove CRC, se necessário
+    elif edc == 'hamming':
+        bits_corrigido_str, err_pos = self.rx.checkHamming(desenq_bits)
+        bits_final = [int(b) for b in bits_corrigido_str]
+        if err_pos != 0:
+            self.result_label.set_text(f"Hamming corrigiu erro na posição {err_pos}")
+    else:
+        self.result_label.set_text("Erro: EDC desconhecido")
+        return
+
+    # Passo 5: bits para texto
+    text_out = self.rx.bits2Text(bits_final)
+
+    # Exibe o texto recebido
+    self.result_label.set_text(f"Texto recebido: {text_out}")
+
 
 def main():
   win = InterfaceGTK()
@@ -111,6 +234,5 @@ def main():
   win.show_all()
   Gtk.main()
 
-if __name__ == "__main__":
-  main()
+
 
