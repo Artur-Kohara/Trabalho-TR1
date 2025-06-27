@@ -215,6 +215,7 @@ class Receiver:
 
         # Lê os primeiros 8 bits como cabeçalho (tamanho do frame)
         size_bits = bitStream[i:i+8]
+        # Transforma cada elemento em string, concatena, converte os bits para decimal e transforma em inteiro
         frame_size = int(''.join(map(str, size_bits)), 2)
 
         # Recupera os dados do frame conforme o tamanho informado

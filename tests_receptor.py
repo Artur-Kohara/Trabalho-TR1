@@ -63,8 +63,8 @@ def test_chCountUnframing():
   frame_data = [1, 0, 1, 0, 1, 0, 1, 0]  # 8 bits
   frame = tx.chCountFraming(frame_data, frame_size=8)[0]
   bitStream = [bit for bit in frame]
-  resultado = rx.chCountUnframing([frame])
-  assert resultado == "10101010", f"Esperado '10101010', mas retornou '{resultado}'"
+  resultado = rx.chCountUnframing(bitStream)
+  assert resultado == frame_data, f"Esperado {frame_data}, mas retornou '{resultado}'"
 
 def test_byteInsertionUnframing():
   byte = [1, 0, 1, 0, 1, 0, 1, 0]
