@@ -231,36 +231,50 @@ class Receiver:
 
     return recovered_bits
   
-  def byteInsertionUnframing(self, frames):
+  def byteInsertionUnframing(self, bitStream):
     """
-    Desenquadra os frames por inserção de bytes
-    frames: lista de frames, onde cada frame é uma lista de bits
-    return: string com o trem de bits desenquadrado
+    Desenquadra um trem de bits com inserção de bytes.
+    Detecta as flags, remove-as e trata escapes.
+    bitStream: lista de bits (int) com vários quadros serializados.
+    return: lista de bits original, sem bytes de escape nem flags.
     """
-    bitStream = []
-    flag = [0, 1, 1, 1, 1, 1, 1, 0]
-    escape = [0, 1, 1, 1, 1, 1, 0, 1]
-    for frame in frames:
-      # Verifica se o quadro começa e termina com a flag
-      if frame[:8] == flag and frame[-8:] == flag:
-        # Remove a flag do início e do fim do quadro
-        data_bits = frame[8:-8]
-        i = 0
-        # Percorre os bits do quadro para verificar a presença de escape
-        while i < len(data_bits):
-          byte = data_bits[i:i + 8]
-          # Verifica se o byte é um byte de escape
-          if byte == escape and i + 8 < len(data_bits):
-            next_byte = data_bits[i + 8:i + 16]
-            # Adiciona o próximo byte normal
-            bitStream.extend(next_byte)
-            i += 16
-          else:
-            # Adiciona o byte normal ao bitStream
-            bitStream.extend(byte)
-            i += 8
-    # Converte a lista de bits para uma string de bits
-    return ''.join(map(str, bitStream))
+    flag = [0, 1, 1, 1, 1, 1, 1, 0]   # 0x7E
+    escape = [0, 1, 1, 1, 1, 1, 0, 1] # 0x7D
+    recovered_bits = []
+    i = 0
+    n = len(bitStream)
+
+    while i <= n - 8:
+        # Verifica início da flag
+        if bitStream[i:i+8] == flag:
+            i += 8  # pula flag inicial
+            frame_data = []
+
+            # Lê até encontrar próxima flag
+            while (i <= n - 8) and (bitStream[i:i+8] != flag):
+                byte = bitStream[i:i+8]
+
+                # Verifica se encontrou escape
+                if byte == escape and i + 16 <= n:
+                    # Caso encontre escape, lê o próximo byte como dado e adiciona ao resultado
+                    next_byte = bitStream[i+8:i+16]
+                    frame_data.extend(next_byte)
+                    i += 16
+                else:
+                    # Caso não seja escape, adiciona o byte atual ao resultado
+                    frame_data.extend(byte)
+                    i += 8
+
+            # Se encontrar uma flag final, descarta ela
+            if bitStream[i:i+8] == flag:
+                i += 8
+
+            # Junta os dados tratados
+            recovered_bits.extend(frame_data)
+        else:
+            i += 1  # avança para tentar encontrar a próxima flag
+
+    return recovered_bits
   
   def bitInsertionUnframing(self, frames):
     """
@@ -382,7 +396,7 @@ class Receiver:
         # (Usando o "and" ambos ficam em representação binária)
         # Ex: 011(j) & 010(parity_pos=2) = 1, então entra no if (2 compõe o número 3)
         if j & parity_pos:
-          # Faz XOR do bit de paridade com o bit atual e salva o resultado da paridade
+          # Faz XOR do bit de paridade com o bit atual e salva o recovered_bitsado da paridade
           parity ^= bitStream[j-1]
 
       # Salva a posição do erro usando os bits de paridade diferentes de 0
@@ -408,6 +422,6 @@ class Receiver:
   def _is_power_of_two(self, x):
     # Retorna True se x for uma potência de dois, False caso contrário
     # Verifica se x é diferente de zero e faz "and" entre x e (x-1)
-    # Sempre que se faz "and" entre um número que é potência de dois e seu antecessor, o resultado é 0
+    # Sempre que se faz "and" entre um número que é potência de dois e seu antecessor, o recovered_bitsado é 0
     # Exemplo: 4 (100) & 3 (011) = 0
     return x != 0 and (x & (x - 1)) == 0

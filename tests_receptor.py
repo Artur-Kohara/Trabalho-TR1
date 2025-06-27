@@ -67,10 +67,11 @@ def test_chCountUnframing():
   assert resultado == frame_data, f"Esperado {frame_data}, mas retornou '{resultado}'"
 
 def test_byteInsertionUnframing():
-  byte = [1, 0, 1, 0, 1, 0, 1, 0]
-  frame = tx.byteInsertionFraming(byte, frame_size=8)[0]
-  resultado = rx.byteInsertionUnframing([frame])
-  assert resultado == "10101010", f"Esperado '10101010', mas retornou '{resultado}'"
+  bits = [1, 0, 1, 0, 1, 0, 1, 0]
+  frame = tx.byteInsertionFraming(bits, frame_size=8)[0]
+  bitStream = [bit for bit in frame]
+  resultado = rx.byteInsertionUnframing(bitStream)
+  assert resultado == bits, f"Esperado {bits}, mas retornou '{resultado}'"
 
 def test_bitInsertionUnframing():
   # bits com sequencia "111110" (inserido 0 após cinco 1s)
