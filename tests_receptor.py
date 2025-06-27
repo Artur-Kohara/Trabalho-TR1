@@ -61,24 +61,24 @@ def test_QAM8_demodulation():
 
 def test_chCountUnframing():
   frame_data = [1, 0, 1, 0, 1, 0, 1, 0]  # 8 bits
-  frame = tx.chCountFraming(frame_data, frame_size=8)[0]
-  bitStream = [bit for bit in frame]
+  framed_bits = tx.chCountFraming(frame_data, frame_size=8)
+  bitStream = [bit for frame in framed_bits for bit in frame]
   resultado = rx.chCountUnframing(bitStream)
   assert resultado == frame_data, f"Esperado {frame_data}, mas retornou '{resultado}'"
 
 def test_byteInsertionUnframing():
   bits = [1, 0, 1, 0, 1, 0, 1, 0]
-  frame = tx.byteInsertionFraming(bits, frame_size=8)[0]
-  bitStream = [bit for bit in frame]
+  framed_bits = tx.byteInsertionFraming(bits, frame_size=8)
+  bitStream = [bit for frame in framed_bits for bit in frame]
   resultado = rx.byteInsertionUnframing(bitStream)
   assert resultado == bits, f"Esperado {bits}, mas retornou '{resultado}'"
 
 def test_bitInsertionUnframing():
-  # bits com sequencia "111110" (inserido 0 após cinco 1s)
   original_bits = [1, 1, 1, 1, 1, 0, 0, 0]
-  frame = tx.bitInsertionFraming(original_bits, frame_size=8)[0]
-  desenquadrado = rx.bitInsertionUnframing([frame])
-  assert desenquadrado == "11111000", f"Esperado '11111000', mas retornou '{desenquadrado}'"
+  framed_bits = tx.bitInsertionFraming(original_bits, frame_size=8)
+  bitStream = [bit for frame in framed_bits for bit in frame]
+  desenquadrado = rx.bitInsertionUnframing(bitStream)
+  assert desenquadrado == original_bits, f"Esperado {original_bits}, mas retornou {desenquadrado}"
 
 ################################################################################
 # Demodulação (banda base)

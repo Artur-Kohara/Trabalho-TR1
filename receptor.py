@@ -276,27 +276,43 @@ class Receiver:
 
     return recovered_bits
   
-  def bitInsertionUnframing(self, frames):
+  def bitInsertionUnframing(self, bitStream):
     """
     Desenquadra os frames por inserção de bits
-    frames: lista de frames, onde cada frame é uma lista de bits
-    return: string com o trem de bits desenquadrado
+    bitStream: lista de bits (inteiros)
+    return: lista de bits originais (inteiros)
     """
-    bitStream = []
     flag = [0, 1, 1, 1, 1, 1, 1, 0]
-    
-    for frame in frames:
-      # Verifica se o quadro começa e termina com a flag
-      if frame[:8] == flag and frame[-8:] == flag:
-        # Remove a flag do início e do fim do quadro
-        data_bits = frame[8:-8]
+    flag_len = len(flag)
+    n = len(bitStream)
+    i = 0
+    recovered_bits = []
+    # Percorre o bitStream garantindo que não ultrapasse o tamanho do stream
+    while i <= n - flag_len:
+        # Verifica se encontrou uma flag de início
+        if bitStream[i:i+flag_len] == flag:
+            start = i + flag_len
+            i = start
 
-        # Remove os bits 0 inseridos após cinco bits 1
-        cleaned_data = self.removeBit0(data_bits)
-        bitStream.extend(cleaned_data)
+            # Procura a próxima flag para determinar o final do frame
+            while i <= n - flag_len:
+                if bitStream[i:i+flag_len] == flag:
+                    end = i
+                    frame_data = bitStream[start:end]
 
-    # Converte a lista de bits para uma string de bits
-    return ''.join(map(str, bitStream))
+                    # Remove os bits 0 inseridos após cinco bits '1'
+                    cleaned_data = self.removeBit0(frame_data)
+                    # Adiciona os dados limpos ao resultado
+                    recovered_bits.extend(cleaned_data)
+
+                    i += flag_len  # Avança para buscar próximo frame
+                    break
+                else:
+                    i += 1
+        else:
+            i += 1
+
+    return recovered_bits
   
   # Função auxiliar que remove o bit 0 inserido após cinco bits 1 seguidos
   def removeBit0(self, frame_data):
