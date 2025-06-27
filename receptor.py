@@ -345,7 +345,7 @@ class Receiver:
     '''
     Verifica se a soma dos bits 1 é par. Ao adicionar o bit de paridade, a soma é par se não houver erro
     bitstream: Lista de bits com o bit de paridade no final
-    return: True se a paridade estiver correta, False se a paridade estiver incorreta
+    return: Trueos bits sem o bit de paridade se a paridade estiver correta, False se a paridade estiver incorreta
     '''
     # Pega o último bit da lista (bit de paridade)
     parity_bit = bitStream[-1]
@@ -356,7 +356,9 @@ class Receiver:
 
     # Compara se o bit de paridade enviado bate com a paridade do trem de bits
     if parity == parity_bit:
-      return True
+      # Remove o último bit (bit de paridade)
+      original_bits = bitStream[:-1]
+      return original_bits
     else:
       return False
   

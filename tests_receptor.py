@@ -113,7 +113,7 @@ def test_checkEvenParity():
   bits_pareados = tx.addEvenParityBit(bits)
   # esperado = [1, 0, 1, 0, 1, 1, 0]
   check_parity = rx.checkEvenParityBit(bits_pareados)
-  assert check_parity == True, f"Esperado {True}, mas retornou {check_parity}"
+  assert check_parity == bits, f"Esperado {bits}, mas retornou {check_parity}"
 
   wrong_paired_bits = [1, 0, 1, 0, 1, 0]
   check_parity = rx.checkEvenParityBit(wrong_paired_bits)
