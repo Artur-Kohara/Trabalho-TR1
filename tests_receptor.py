@@ -64,21 +64,21 @@ def test_chCountUnframing():
   framed_bits = tx.chCountFraming(frame_data, frame_size=8)
   bitStream = [bit for frame in framed_bits for bit in frame]
   resultado = rx.chCountUnframing(bitStream)
-  assert resultado == frame_data, f"Esperado {frame_data}, mas retornou '{resultado}'"
+  assert resultado == [frame_data], f"Esperado {[frame_data]}, mas retornou '{resultado}'"
 
 def test_byteInsertionUnframing():
   bits = [1, 0, 1, 0, 1, 0, 1, 0]
   framed_bits = tx.byteInsertionFraming(bits, frame_size=8)
   bitStream = [bit for frame in framed_bits for bit in frame]
   resultado = rx.byteInsertionUnframing(bitStream)
-  assert resultado == bits, f"Esperado {bits}, mas retornou '{resultado}'"
+  assert resultado == [bits], f"Esperado {[bits]}, mas retornou '{resultado}'"
 
 def test_bitInsertionUnframing():
   original_bits = [1, 1, 1, 1, 1, 0, 0, 0]
   framed_bits = tx.bitInsertionFraming(original_bits, frame_size=8)
   bitStream = [bit for frame in framed_bits for bit in frame]
   desenquadrado = rx.bitInsertionUnframing(bitStream)
-  assert desenquadrado == original_bits, f"Esperado {original_bits}, mas retornou {desenquadrado}"
+  assert desenquadrado == [original_bits], f"Esperado {[original_bits]}, mas retornou {desenquadrado}"
 
 ################################################################################
 # Demodulação (banda base)

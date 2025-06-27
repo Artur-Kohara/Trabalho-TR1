@@ -204,7 +204,7 @@ class Receiver:
     """
     Desfaz o enquadramento por contagem de caracteres.
     bitStream: lista de bits (inteiros) no formato [header + dados] * N
-    return: lista de bits contendo apenas os dados reais, sem os cabeçalhos.
+    return: lista de lista de bits, onde cada sublista representa um frame recuperado
     """
     i = 0
     recovered_bits = []
@@ -224,7 +224,7 @@ class Receiver:
         data_bits = bitStream[start:end]
 
         # Adiciona os dados ao bitstream final
-        recovered_bits.extend(data_bits)
+        recovered_bits.append(data_bits)
 
         # Avança para o próximo quadro
         i = end
@@ -235,8 +235,8 @@ class Receiver:
     """
     Desenquadra um trem de bits com inserção de bytes.
     Detecta as flags, remove-as e trata escapes.
-    bitStream: lista de bits (int) com vários quadros serializados.
-    return: lista de bits original, sem bytes de escape nem flags.
+    bitStream: lista de bits (int) com vários quadros serializados
+    return: lista de lista de bits, onde cada sublista representa um frame recuperado
     """
     flag = [0, 1, 1, 1, 1, 1, 1, 0]   # 0x7E
     escape = [0, 1, 1, 1, 1, 1, 0, 1] # 0x7D
@@ -270,7 +270,7 @@ class Receiver:
                 i += 8
 
             # Junta os dados tratados
-            recovered_bits.extend(frame_data)
+            recovered_bits.append(frame_data)
         else:
             i += 1  # avança para tentar encontrar a próxima flag
 
@@ -280,7 +280,7 @@ class Receiver:
     """
     Desenquadra os frames por inserção de bits
     bitStream: lista de bits (inteiros)
-    return: lista de bits originais (inteiros)
+    return: lista de lista de bits, onde cada sublista representa um frame limpo
     """
     flag = [0, 1, 1, 1, 1, 1, 1, 0]
     flag_len = len(flag)
@@ -303,7 +303,7 @@ class Receiver:
                     # Remove os bits 0 inseridos após cinco bits '1'
                     cleaned_data = self.removeBit0(frame_data)
                     # Adiciona os dados limpos ao resultado
-                    recovered_bits.extend(cleaned_data)
+                    recovered_bits.append(cleaned_data)
 
                     i += flag_len  # Avança para buscar próximo frame
                     break
