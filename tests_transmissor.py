@@ -3,6 +3,10 @@
 from transmissor import Transmitter
 import numpy as np
 
+import matplotlib
+matplotlib.use('TkAgg')  
+import matplotlib.pyplot as plt
+
 def test_text2Binary():
   transmitter = Transmitter({})
   # Teste com caractere 'A' (ASCII 65 = 01000001)
@@ -75,7 +79,7 @@ def test_polarNRZCoder():
   transmitter = Transmitter({})
   
   # Teste básico com bits alternados
-  result = transmitter.polarNRZCoder([1, 0, 1, 0])
+  result = transmitter.polarNRZCoder([1, 0, 1, 0],V=1)
   expected = [1, -1, 1, -1]
   print(f"polarNRZCoder([1,0,1,0]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
   
@@ -85,7 +89,7 @@ def test_polarNRZCoder():
   print(f"polarNRZCoder([1,0], V=2): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
   
   # Teste com sequência de 1s
-  result = transmitter.polarNRZCoder([1, 1, 1])
+  result = transmitter.polarNRZCoder([1, 1, 1],V=1)
   expected = [1, 1, 1]
   print(f"polarNRZCoder([1,1,1]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}\n")
 
@@ -111,12 +115,12 @@ def test_bipolarCoder():
   transmitter = Transmitter({})
   
   # Teste básico com bits alternados
-  result = transmitter.bipolarCoder([1, 0, 1, 0])
+  result = transmitter.bipolarCoder([1, 0, 1, 0],V=1)
   expected = [1, 0, -1, 0]
   print(f"bipolarCoder([1,0,1,0]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
   
   # Teste com sequência de 1s (deve alternar polaridade)
-  result = transmitter.bipolarCoder([1, 1, 1])
+  result = transmitter.bipolarCoder([1, 1, 1],V=1)
   expected = [1,-1,1]
   print(f"bipolarCoder([1,1,1]): {result} | Esperado: {expected} | {'✅' if result == expected else '❌'}")
   
@@ -347,7 +351,40 @@ def test_addHamming():
   print(f"addHamming(8 bits): Tamanho={len(result)} | Esperado: 12 | {'✅' if len(result) == 12 else '❌'}")
   
 
+##########################################################
+# Funções de teste para detecção de erro
+##########################################################
 
+def test_plot_baseband():
+  transmitter = Transmitter()
+  bits = [1, 0, 1, 1, 0, 0, 1,1,0,1]  
+  # Teste NRZ
+  print("\nNRZ Polar:")
+  transmitter.plot_baseband(bits, 'nrz')
+  
+  # Teste Manchester
+  print("\nManchester:")
+  transmitter.plot_baseband(bits, 'manchester')
+  
+  # Teste Bipolar
+  print("\nBipolar (AMI):")
+  transmitter.plot_baseband(bits, 'bipolar')
+
+def test_plot_passband():
+  transmitter = Transmitter()
+  bits = [1, 0, 1, 0, 1, 0,1, 1,0,0,1,0,1]
+  
+  # Teste ASK
+  print("\nASK:")
+  transmitter.plot_passband(bits, 'ask')
+  
+  # Teste FSK
+  print("\nFSK:")
+  transmitter.plot_passband(bits, 'fsk')
+  
+  # Teste QAM
+  print("\nQAM8:")
+  transmitter.plot_passband(bits, 'qam')
 
 ################################################
 # Chama as funções de teste
@@ -369,9 +406,13 @@ if __name__ == "__main__":
   #Modulação por portadora (banda passante)
   test_ASK() #OK
   test_FSK() #OK
-  test_QAM8() #TODO: checar com mais calma
+  test_QAM8() #OK
   
   #Detecção de erro
   test_addEvenParityBit() #OK
   test_addCRC() #Acho que OK
   test_addHamming() #OK
+
+  #Plot dos gráficos
+  test_plot_baseband() #OK
+  test_plot_passband() #OK
