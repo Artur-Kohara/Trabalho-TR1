@@ -41,7 +41,7 @@ def socketTrasmission(config_transmissao):
     else:
         modulated_stream = framed_stream
 
-    # Modulação BB
+    # Modulação BB (banda base)
     if mod_bb == "NRZ":
         signal_bb = tx.polarNRZCoder(modulated_stream)
     elif mod_bb == "Manchester":
@@ -53,17 +53,18 @@ def socketTrasmission(config_transmissao):
 
     # Modulação por portadora
     if mod_bp == "ASK":
-        modulated_signal = tx.ASK(signal_bb, A=1, f=1000)
+        modulated_signal = tx.ASK(modulated_stream, A=1, f=1000)
     elif mod_bp == "FSK":
-        modulated_signal = tx.FSK(signal_bb, A=1, f1=2000, f2=1000)
+        modulated_signal = tx.FSK(modulated_stream, A=1, f1=2000, f2=1000)
     elif mod_bp == "8-QAM":
-        modulated_signal = tx.QAM8(signal_bb, A=1, f=1000)
+        modulated_signal = tx.QAM8(modulated_stream, A=1, f=1000)
     else:
         modulated_signal = signal_bb
 
     # Dados a serem enviados
     package = {
-        'modulated_signal': modulated_signal,
+        'signal_bb': signal_bb,
+        'signal_bp': modulated_signal,
         'text': text,
         'config': {
             'framing': framing,

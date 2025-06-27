@@ -5,6 +5,10 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
 import numpy as np
 from transmissor import Transmitter
+import threading
+from receptor_socket import start_receiver
+import socket
+import pickle
 
 class InterfaceGUI(Gtk.Window):
   def __init__(self):
@@ -48,11 +52,13 @@ class InterfaceGUI(Gtk.Window):
     self.btn_transmit = Gtk.Button.new_with_label("Transmitir Mensagem")
     self.btn_transmit.set_size_request(200, 40)
     self.btn_transmit.get_style_context().add_class("suggested-action")
+    self.btn_transmit.connect("clicked", self.transmit_message)
     btn_box.pack_start(self.btn_transmit, False, False, 0)
     
     self.btn_receive = Gtk.Button.new_with_label("Receber Mensagem")
     self.btn_receive.set_size_request(200, 40)
     self.btn_receive.get_style_context().add_class("destructive-action")
+    self.btn_receive.connect("clicked", lambda b: threading.Thread(target=start_receiver, args=(self,)).start())
     btn_box.pack_start(self.btn_receive, False, False, 0)
     
     self.show_all()
@@ -102,6 +108,81 @@ class InterfaceGUI(Gtk.Window):
       style_provider,
       Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
     )
+
+  def transmit_message(self):
+    config = {
+        "mod_bp": next((k for k, v in self.bp_opts.items() if v.get_active())),
+        "mod_bb": next((k for k, v in self.bb_opts.items() if v.get_active())),
+        "framing": next((k for k, v in self.framing_opts.items() if v.get_active())),
+        "edc": next((k for k, v in self.edc_opts.items() if v.get_active()))
+    }
+
+    text = self.entry_text.get_text()
+    tx = Transmitter({})
+    bits = tx.text2Binary(text)
+
+    # EDC
+    if config["edc"] == "Bit de Paridade Par":
+        bits = tx.addEvenParityBit(bits)
+    elif config["edc"] == "CRC":
+        bits = tx.addCRC(bits)
+    elif config["edc"] == "Hamming":
+        bits = tx.addHamming(bits)
+
+    # Enquadramento
+    if config["framing"] == "Cont. de Caracteres":
+        frames = tx.chCountFraming(bits, 32)
+    elif config["framing"] == "Inserção de Bits":
+        frames = tx.bitInsertionFraming(bits, 32)
+    elif config["framing"] == "Inserção de Bytes":
+        frames = tx.byteInsertionFraming(bits, 32)
+
+    bits_framed = [bit for frame in frames for bit in frame]
+
+    # Modulação BB
+    if config["mod_bb"] == "NRZ":
+        mod_bb = tx.polarNRZCoder(bits_framed)
+    elif config["mod_bb"] == "Manchester":
+        mod_bb = tx.manchesterCoder(bits_framed)
+    elif config["mod_bb"] == "Bipolar":
+        mod_bb = tx.bipolarCoder(bits_framed)
+
+    # Plot BB
+    ax1 = self.figure_bb.gca()
+    ax1.clear()
+    ax1.plot(mod_bb)
+    ax1.set_title("Modulação Banda Base")
+    self.canvas_bb.draw()
+
+    # Modulação BP
+    if config["mod_bp"] == "ASK":
+        mod_bp = tx.ASK(bits_framed, A=1, f=1000)
+    elif config["mod_bp"] == "FSK":
+        mod_bp = tx.FSK(bits_framed, A=1, f1=1000, f2=2000)
+    elif config["mod_bp"] == "8-QAM":
+        mod_bp = tx.QAM8(bits_framed, A=1, f=1000)
+
+    # Plot BP
+    ax2 = self.figure_bp.gca()
+    ax2.clear()
+    ax2.plot(mod_bp)
+    ax2.set_title("Modulação Portadora")
+    self.canvas_bp.draw()
+
+    # Envia via socket
+    payload = {
+        "signal_bp": mod_bp,
+        "signal_bb": mod_bb,
+        "config": config
+    }
+
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(('127.0.0.1', 5000))
+            s.sendall(pickle.dumps(payload))
+            print("[Tx] Mensagem enviada com sucesso.")
+    except Exception as e:
+        print(f"[Tx] Erro ao enviar: {e}")
   
   def create_header(self, parent):
     header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
@@ -132,17 +213,17 @@ class InterfaceGUI(Gtk.Window):
     options_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
     header_box.pack_start(options_box, False, False, 10)
     
-    # Frame Enquadramento
-    frame_enq = Gtk.Frame(label=" Enquadramento ")
-    frame_enq.get_style_context().add_class("option-frame")
-    hbox_enq = Gtk.Box(spacing=10)
-    frame_enq.add(hbox_enq)
-    self.enq_opts = {}
+    # Frame enquadramento
+    frame_framing = Gtk.Frame(label=" Enquadramento ")
+    frame_framing.get_style_context().add_class("option-frame")
+    hbox_framing = Gtk.Box(spacing=10)
+    frame_framing.add(hbox_framing)
+    self.framing_opts = {}
     for label in ["Cont. de Caracteres", "Inserção de Bits", "Inserção de Bytes"]:
-      btn = Gtk.RadioButton.new_with_label_from_widget(next(iter(self.enq_opts.values()), None), label)
-      hbox_enq.pack_start(btn, False, False, 0)
-      self.enq_opts[label] = btn
-    options_box.pack_start(frame_enq, True, True, 0)
+      btn = Gtk.RadioButton.new_with_label_from_widget(next(iter(self.framing_opts.values()), None), label)
+      hbox_framing.pack_start(btn, False, False, 0)
+      self.framing_opts[label] = btn
+    options_box.pack_start(frame_framing, True, True, 0)
     
     # Frame EDC
     frame_edc = Gtk.Frame(label=" Detecção/Correção de Erro ")
