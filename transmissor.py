@@ -1,12 +1,25 @@
 #Esse arquivo consiste na classe do transmissor e seus métodos.
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Transmitter:
-  #Config é um parâmetro passado na inicialização que controla aspectos do funcionamento do transmissor. ex: bitrate, codificação etc
-  def __init__ (self,config):
-    self.config = config
 
+  #Config é um parâmetro passado na inicialização que controla aspectos do funcionamento do transmissor. ex: bitrate, codificação etc
+  def __init__(self, config=None):
+    # Configuração padrão otimizada
+    self.default_config = {
+        'V': 1.0,          #Amplitude para modulações de banda base (float)
+        'A': 1.0,          #Amplitude para modulações de banda passante (float)
+        'f': 2.0,          #Frequência base (float)
+        'f1': 2.0,         #Frequência para bit 1 (FSK) (float)
+        'f2': 4.0,         #Frequência para bit 0 (FSK) (float)
+        'frame_size': 32,  #Tamanho do quadro em bits (int)
+    }
+    
+    # Mescla configurações
+    self.config = {**self.default_config, **(config or {})}
+    
   #Método que recebe uma string e retorna o trem de bits equivalente
   def text2Binary(self, text):
     bitStream = []
@@ -139,7 +152,7 @@ class Transmitter:
   #Modulação NRZ Polar: bit = 1 -> sinal em +V e bit = 0 -> sinal em -V
   #Recebe um trem de bits (lista de bits) e a amplitude do sinal (V), por padrão = 1
   #Retorna lista de amplitudes do sinal modulado
-  def polarNRZCoder(self, bitStream, V=1):
+  def polarNRZCoder(self, bitStream, V):
     modulated_signal = []
 
     for bit in bitStream:
@@ -161,10 +174,10 @@ class Transmitter:
 
     return modulated_signal
 
-  #Modulação Bipolar(AMI): 0 é representado por 0 e 1 alterna entre V e -V, com V=1 por padrão
+  #Modulação Bipolar(AMI): 0 é representado por 0 e 1 alterna entre V e -V
   #Recebe um trem de bits (lista de bits)
   #Retorna lista de amplitudes do sinal modulado
-  def bipolarCoder(self,bitStream,V=1):
+  def bipolarCoder(self,bitStream,V):
     modulated_signal = []
     last_polarity = -V  #Começa invertido para que o primeiro 1 seja +V
 
@@ -328,3 +341,108 @@ class Transmitter:
 
     return frame
 
+
+  #############################################
+  # Plotagem de gráficos
+  #############################################
+
+  #Plota sinais de modulação digital em banda base.
+  #Recebe trem de bits(lista de inteiros), tipo de modulação (string) e valor de tensão V(float)
+  def plot_baseband(self, bitStream, modulation_type, V=None):
+    if V is None:
+      V = self.config['V']
+    
+    # Gera o sinal modulado
+    if modulation_type.lower() == 'nrz':
+      signal = self.polarNRZCoder(bitStream, V)
+      time_scale = np.arange(len(signal))  # 1 amostra por bit
+      bit_duration = 1
+    elif modulation_type.lower() == 'manchester':
+      signal = self.manchesterCoder(bitStream)
+      # Corrige a escala de tempo: 2 amostras por bit, mas 1 unidade de tempo por bit
+      time_scale = np.arange(0, len(bitStream), 0.5)
+      bit_duration = 1
+    elif modulation_type.lower() == 'bipolar':
+      signal = self.bipolarCoder(bitStream, V)
+      time_scale = np.arange(len(signal))
+      bit_duration = 1
+    else:
+      raise ValueError("Tipo de modulação inválido")
+
+    plt.figure(figsize=(12, 4))
+    
+    # Plotagem especial para Manchester
+    if modulation_type.lower() == 'manchester':
+      plt.step(time_scale, signal, where='post', linewidth=2)
+      # Adiciona marcadores no MEIO de cada bit (transição Manchester)
+      for i in range(len(bitStream)):
+        plt.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)  # Linha no meio do bit
+    else:
+      plt.step(time_scale, signal, where='post', linewidth=2)
+    
+    # Configurações comuns
+    plt.title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    plt.xlabel("Tempo (unidades de bit)")
+    plt.ylabel("Amplitude")
+    plt.grid(True)
+    
+    # Limites do eixo Y
+    if modulation_type.lower() == 'nrz':
+      plt.ylim(-V*1.2, V*1.2)
+    elif modulation_type.lower() == 'manchester':
+      plt.ylim(-0.2, 1.2)
+    else:  # bipolar
+      plt.ylim(-V*1.2, V*1.2)
+    
+    # Marcadores de início de bit
+    for i in range(len(bitStream) + 1):
+      plt.axvline(x=i, color='r', linestyle='-', alpha=0.3)  # Linhas vermelhas marcando início de cada bit
+    
+    plt.tight_layout()
+    plt.show()
+
+  #Plota sinais de modulação digital em banda passante
+  #Recebe trem de bits (lista de inteiros), tipo de modulação (string), Amplitude, frequência, frequência 1 e 2(FSK), em que todos são floats
+  def plot_passband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None):
+    # Usa valores da configuração se não fornecidos
+    A = A or self.config['A']
+    f = f or self.config['f']
+    f1 = A or self.config['f1']
+    f2 = f or self.config['f2']
+    
+    # Gera o sinal modulado
+    if modulation_type.lower() == 'ask':
+        signal = self.ASK(bitStream, A, f)
+        samples_per_bit = 100
+    elif modulation_type.lower() == 'fsk':
+        f1 = f1 or self.config['f1']
+        f2 = f2 or self.config['f2']
+        signal = self.FSK(bitStream, A, f1, f2)
+        samples_per_bit = 100
+    elif modulation_type.lower() == 'qam':
+        signal = self.QAM8(bitStream, A, f)
+        samples_per_bit = 33  # 100 amostras / 3 bits
+    else:
+        raise ValueError("Tipo de modulação inválido. Use 'ask', 'fsk' ou 'qam'")
+
+    plt.figure(figsize=(12, 4))
+    
+    # Cria eixo de tempo em unidades de bit
+    t = np.arange(len(signal)) / samples_per_bit
+    
+    # Plotagem
+    plt.plot(t, signal, linewidth=1.5)
+    
+    # Configurações
+    plt.title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    plt.xlabel("Tempo (em unidades de bit)")
+    plt.ylabel("Amplitude")
+    plt.grid(True, linestyle='--', alpha=0.7)
+    
+    # Adiciona marcadores de bits
+    num_bits = len(bitStream)
+    for i in range(num_bits + 1):
+        plt.axvline(x=i, color='r', linestyle=':', alpha=0.4)
+    
+    plt.tight_layout()
+    plt.show()
