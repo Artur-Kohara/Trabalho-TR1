@@ -123,7 +123,7 @@ def test_checkCRC():
   bits = [1,1,0,0, 1,0,1,0, 0,1,1,0]
   bits_CRC = tx.addCRC(bits)
   result = rx.checkCRC(bits_CRC)
-  assert result == True, f"Esperado {True}, mas retornou {result}"
+  assert result == bits, f"Esperado {bits}, mas retornou {result}"
 
   wrong_CRC_bits = [1, 0, 1, 0, 0,1,1,1,1,1,1]
   result = rx.checkCRC(wrong_CRC_bits)
@@ -147,20 +147,24 @@ def test_checkHamming():
 
 def test_full_transmission_reception():
   # Transmissão
+  edc_bits = []
   text = "Hello World"
   bits = tx.text2Binary(text)
   framed_bits = tx.chCountFraming(bits, frame_size=8)
-  bitStream = [bit for frame in framed_bits for bit in frame]
-  edc_bits = tx.addCRC(bitStream)
+  for frame in framed_bits:
+    edc_frame = tx.addCRC(frame)
+    edc_bits.extend(edc_frame)
   modulated_signal = tx.ASK(edc_bits, 1, 5)
 
   # Recepção
   demodulated_bits = rx.demoduleASK(modulated_signal)
   unframed_bits = rx.chCountUnframing(list(map(int, demodulated_bits)))
-  valid = rx.checkCRC(list(map(int, unframed_bits)))
-  if valid:
-    received_text = rx.bits2Text(list(map(int, unframed_bits)))
-    assert received_text == text, f"Erro na recepção: esperado '{text}', mas recebido '{received_text}'"
+  bits = rx.checkCRC(list(map(int, unframed_bits)))
+  if bits is False:
+    raise ValueError("Erro na verificação do CRC")
+  else:
+    received_text = rx.bits2Text(bits)
+    assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
 
 ################################################################################
 # Roda todos os testes

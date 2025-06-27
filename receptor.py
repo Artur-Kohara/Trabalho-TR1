@@ -366,23 +366,26 @@ class Receiver:
     '''
     Verifica se o bitStream tem o CRC correto
     bitStream: Lista de bits com o CRC no final
-    return: True se o CRC estiver correto, False se o CRC estiver incorreto
+    return: Bits originais se o CRC estiver correto, False se o CRC estiver incorreto
     '''
     gen_poly = [1,0,0,0, 0,1,1,1]
+    # Cópia do bitStream
+    dividend = bitStream.copy()
     degree = len(gen_poly) - 1 #Grau do polinômio
 
-    for i in range((len(bitStream)) - degree):
+    for i in range((len(dividend)) - degree):
       #Se o bit atual for 1, faz XOR com cada bit do polinômio gerador
-      if bitStream[i] == 1:
+      if dividend[i] == 1:
         for j in range (len(gen_poly)): 
-          bitStream[i+j] = bitStream[i+j] ^ gen_poly[j]
+          dividend[i+j] = dividend[i+j] ^ gen_poly[j]
 
     #Os últimos 7 bits (grau) do dividendo são o resto da divisão
-    remainder = bitStream[-degree:]
+    remainder = dividend[-degree:]
 
     # Se o resto for igual a zero, o CRC está correto
     if remainder == [0] * degree:
-      return True
+      # Retorna os bits originais sem o CRC
+      return bitStream[:-degree]
     else:
       return False
 
