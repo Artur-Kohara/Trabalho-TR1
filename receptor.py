@@ -345,7 +345,7 @@ class Receiver:
     '''
     Verifica se a soma dos bits 1 é par. Ao adicionar o bit de paridade, a soma é par se não houver erro
     bitstream: Lista de bits com o bit de paridade no final
-    return: Trueos bits sem o bit de paridade se a paridade estiver correta, False se a paridade estiver incorreta
+    return: lista de bits sem o bit de paridade se a paridade estiver correta, False se a paridade estiver incorreta
     '''
     # Pega o último bit da lista (bit de paridade)
     parity_bit = bitStream[-1]
@@ -366,7 +366,7 @@ class Receiver:
     '''
     Verifica se o bitStream tem o CRC correto
     bitStream: Lista de bits com o CRC no final
-    return: Bits originais se o CRC estiver correto, False se o CRC estiver incorreto
+    return: Lista de bits originais sem o CRC se estiver correto, False se o CRC estiver incorreto
     '''
     gen_poly = [1,0,0,0, 0,1,1,1]
     # Cópia do bitStream
@@ -393,7 +393,7 @@ class Receiver:
     """
     Verifica e corrige um erro de 1 bit usando código de Hamming
     bitStream: lista de bits codificada com Hamming (incluindo paridade)
-    return: (string de bits corrigidos sem bits de paridade, posição do erro ou 0 se não houve erro)
+    return: lista de bits corrigidos sem bits de paridade
     """
     n = len(bitStream)
     # Armazeno o número de bits de paridade
@@ -435,9 +435,7 @@ class Receiver:
       if not self._is_power_of_two(i):
         corrected_bitStream.append(bitStream[i-1])
 
-    # Converte a lista de bits corrigidos para string
-    corrected_bitStream = ''.join(map(str, corrected_bitStream))
-    return corrected_bitStream, error_pos
+    return corrected_bitStream
 
   # Função auxiliar que verifica se um número é uma potência de dois
   def _is_power_of_two(self, x):

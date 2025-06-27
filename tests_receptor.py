@@ -133,12 +133,12 @@ def test_checkHamming():
   bits = [1, 0, 1, 0, 1, 1]
   bits_hamming = tx.addHamming(bits)
   result = rx.checkHamming(bits_hamming)
-  esperado = ("101011", 0)
+  esperado = [1,0,1,0,1,1]
   assert result == esperado, f"Esperado {esperado}, mas retornou {result}"
 
   bits_hamming_wrong = [0,1,1,0,0,0,1,1,0,0,1]
   result = rx.checkHamming(bits_hamming_wrong)
-  esperado = ("1101001", 5)
+  esperado = [1,1,0,1,0,0,1]
   assert result == esperado, f"Esperado {esperado}, mas retornou {result}"
 
 ################################################################################
@@ -148,23 +148,25 @@ def test_checkHamming():
 def test_full_transmission_reception():
   # Transmissão
   edc_bits = []
+  original_bits = []
   text = "Hello World"
   bits = tx.text2Binary(text)
   framed_bits = tx.chCountFraming(bits, frame_size=8)
   for frame in framed_bits:
-    edc_frame = tx.addCRC(frame)
+    edc_frame = tx.addEvenParityBit(frame)
     edc_bits.extend(edc_frame)
   modulated_signal = tx.ASK(edc_bits, 1, 5)
 
   # Recepção
   demodulated_bits = rx.demoduleASK(modulated_signal)
-  unframed_bits = rx.chCountUnframing(list(map(int, demodulated_bits)))
-  bits = rx.checkCRC(list(map(int, unframed_bits)))
-  if bits is False:
-    raise ValueError("Erro na verificação do CRC")
-  else:
-    received_text = rx.bits2Text(bits)
-    assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
+  unframed_bits = rx.chCountUnframing(demodulated_bits)
+  for frame in unframed_bits:
+    original_frame = rx.checkEvenParityBit(frame)
+    if original_frame == False:
+      raise ValueError("Erro detectado, por favor retransmita.")
+    original_bits.extend(original_frame)
+  received_text = rx.bits2Text(original_bits)
+  assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
 
 ################################################################################
 # Roda todos os testes
