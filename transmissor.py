@@ -265,24 +265,23 @@ class Transmitter:
   # Protocolos de detecção de erros (EDC)
   #############################################
 
-  #Adiciona bit de paridade ao final do bitStream. Bit = 0 se soma de 1's for par e 1 se ímpar
-  #TODO: add essa linha no receptor: no receptor, verifica-se se a soma dos bits é par. Ao adicionar o bit de paridade, a soma é par se não houver erro.
-  #Recebe trem de bits (lista de bits)
+  #Adiciona bit de paridade ao final do frame. Bit = 0 se soma de 1's for par e 1 se ímpar
+  #Recebe frame (lista de bits)
   #Retorna o trem de bits, adicionando um bit de paridade ao final
-  def addEvenParityBit(self,bitStream):
-    sum_ones = sum(bitStream)
+  def addEvenParityBit(self,frame):
+    sum_ones = sum(frame)
     parity = sum_ones % 2  #0 se par, 1 se ímpar
-    return bitStream + [parity]
+    return frame + [parity]
 
   #Calcula e adiciona o CRC usando o polinômio gerador pré definido, neste caso o CRC-7 = 0x87 ou 1000 0111 (grau 7)
-  #Recebe trem de bits (lista de bits)
+  #Recebe frame (lista de bits)
   #Retorna o trem de bits, adicionando o CRC ao final
-  def addCRC(self,bitStream):
+  def addCRC(self,frame):
     gen_poly = [1,0,0,0, 0,1,1,1]
     degree = len(gen_poly) - 1 #Grau do polinômio
-    dividend = bitStream.copy() + [0]*degree #Cópia de bitStream, adicionando n zeros ao final, em que n é o grau do polinômio (grau 7)
+    dividend = frame.copy() + [0]*degree #Cópia de frame, adicionando n zeros ao final, em que n é o grau do polinômio (grau 7)
 
-    for i in range(len(bitStream)):
+    for i in range(len(frame)):
       #Se o bit atual for 1, faz XOR com cada bit do polinômio gerador
       if dividend[i] == 1:
         for j in range (len(gen_poly)): 
@@ -290,14 +289,14 @@ class Transmitter:
 
     #Os últimos 7 bits (grau) do dividendo são o CRC
     crc = dividend[-degree:]
-    return bitStream + crc
+    return frame + crc
 
   #Calcula e adiciona os bits de paridade nas posições que são potências de 2
-  #Recebe trem de bits (lista de bits)
+  #Recebe frame (lista de bits)
   #Retorna o trem de bits, com os bits de paridade adicionados nas posições corretas
-  def addHamming(self, bitStream):
+  def addHamming(self, frame):
     #Calcula o número de bits de paridades necessários
-    m = len(bitStream)
+    m = len(frame)
     p = 0
     while 2**p < m + p + 1: #Precisamos que 2**p seja pelo menos igual ao tamanho total após o hamming + 1 (caso em que não ha erro) para codificar todas as posições de erro
         p += 1
@@ -305,10 +304,10 @@ class Transmitter:
 
     #Insere zeros nas posições que são potências de 2
     for i in range(num_parity_bits):
-      bitStream.insert((2**i)-1,0) #-1 pq indexação começa em 0 
+      frame.insert((2**i)-1,0) #-1 pq indexação começa em 0 
 
     #Tamanho total depois da inserção dos bits de paridade
-    n = len(bitStream)
+    n = len(frame)
 
     #Calcula cada bit de paridade
     #Para cada bit de paridade, faz XOR dos bits que ele cobre
@@ -316,16 +315,16 @@ class Transmitter:
       parity_pos = 2**i -1
       parity = 0
 
-      #Percorre todas as posições do bitStream (indexação 1 para facilitar o cálculo)
+      #Percorre todas as posições do frame (indexação 1 para facilitar o cálculo)
       #parity_pos +1 pq: ex: i = 2, parity_pos = 3, os bits que i cobre são 100, 101, 110 e 111, todos começam a partir de 100(4) = parity_pos + 1
       for j in range(parity_pos+1, n+1):  
-        #Verifica se a posição j (em binário) do bitStream tem o i-ésimo bit setado 
+        #Verifica se a posição j (em binário) do frame tem o i-ésimo bit setado 
         #Condição é verdadeira para qualquer número diferente de zero. Ex: 010 & 010 = 010, que é != 0, então entra no if
         if j & (1<<i): #& faz and bit a bit. j está na sua representação binária. 1<<i desloca 1 i vezes à esquerda
-          parity ^= bitStream[j-1] #j-1 para ajustar a indexação em 0
+          parity ^= frame[j-1] #j-1 para ajustar a indexação em 0
 
       #Atualiza paridade no bit de posição parity_pos
-      bitStream[parity_pos] = parity 
+      frame[parity_pos] = parity 
 
-    return bitStream
+    return frame
 
