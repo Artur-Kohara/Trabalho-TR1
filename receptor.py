@@ -26,7 +26,7 @@ class Receiver:
     signal: array de float, contendo o signal modulado ASK
     bit_samples: número de amostras por bit
     treshold: limiar de decisão da presença de onda
-    return: string com os bits demodulados
+    return: lista de bits
     """
     bits = []
 
@@ -38,11 +38,11 @@ class Receiver:
       energy = np.mean(np.square(segment))
 
       if energy > treshold:
-        bits.append("1")
+        bits.append(1)
       else:
-        bits.append("0")
+        bits.append(0)
 
-    return ''.join(bits)
+    return bits
 
   def demoduleFSK(self, signal, f0, f1, A=1, bit_samples=100):
     """
@@ -53,7 +53,7 @@ class Receiver:
     f1: frequência associada ao bit 1
     A: amplitude da portadora (mesmo usado na modulação)
     bit_samples: número de amostras por bit (padrão: 100)
-    return: string de bits decodificados
+    return: lista de bits
     """
     bits = []
     # Vetor de tempo normalizado de 0 até (quase) 1, com bit_samples amostras
@@ -79,10 +79,10 @@ class Receiver:
 
       # Compara a semelhança do sinal com cada referência.
       # O bit é 1 se o sinal se parece mais com f1; senão, é 0.
-      bit = "1" if abs(cor_1) > abs(cor_0) else "0"
+      bit = 1 if abs(cor_1) > abs(cor_0) else 0
       bits.append(bit)
 
-    return ''.join(bits)
+    return bits
   
   def demodule8QAM(self, signal, A=1, f=1000, symbol_samples=100):
     """
@@ -91,7 +91,7 @@ class Receiver:
     A: amplitude usada na modulação
     f: frequência da portadora
     symbol_samples: número de amostras por símbolo (padrão: 100)
-    return: string com os bits demodulados
+    return: lista de bits
     """
     bits = []
     # Vetor de tempo normalizado no intervalo [0, 1) com symbol_samples amostras
@@ -138,7 +138,7 @@ class Receiver:
 
       bits.extend(bits_tuple)
 
-    return ''.join(str(b) for b in bits)
+    return bits
   
 ################################################################################
 # Demodulação (banda base)
@@ -149,74 +149,86 @@ class Receiver:
     Decodifica um sinal modulado polar NRZ
     signal: lista de amplitudes do sinal modulado
     V: amplitude do sinal (padrão = 1)
-    return: string com o trem de bits decodificado
+    return: lista de bits
     """
     bits = []
     for amplitude in signal:
       if amplitude >= V:
-        bits.append('1')
+        bits.append(1)
       elif amplitude <= -V:
-        bits.append('0')
+        bits.append(0)
   
-    return ''.join(bits)
+    return bits
   
   def manchesterDecoder(self, signal):
     """
     Decodifica um sinal modulado Manchester
     signal: lista de amplitudes do sinal modulado
-    return: string com o trem de bits decodificado
+    return: lista de bits
     """
     bits = []
     # Itera sobre os índices do sinal, de 2 em 2, porque cada bit codificado ocupa dois valores no sinal
     for i in range(0, len(signal), 2):
       # Se a primeira metade está alta (1) e a segunda está baixa (0), representa um bit 1
       if (signal[i] == 1) and (signal[i + 1] == 0):
-        bits.append('1')
+        bits.append(1)
       #Se a primeira metade está baixa (0) e a segunda está alta (1), representa um bit 0
       elif (signal[i] == 0) and (signal[i + 1] == 1):
-        bits.append('0')
+        bits.append(0)
   
-    return ''.join(bits)
+    return bits
   
   def bipolarDecoder(self, signal):
     """
     Decodifica um sinal bipolar AMI
     signal: lista de amplitudes (valores como 0, +1 ou -1)
     V: valor da amplitude (padrão: 1)
-    return: string de bits decodificados
+    return: lista de bits
     """
     bits = []
 
     for i in range(0, len(signal)):
       bit = signal[i]
       if bit == 0:
-        bits.append("0")
+        bits.append(0)
       else:
-        bits.append("1")
+        bits.append(1)
 
-    return ''.join(bits)
+    return bits
 
 ################################################################################
 # Desenquadramentos
 ################################################################################
 
-  def chCountUnframing(self, frames):
+  def chCountUnframing(self, bitStream):
     """
-    Desenquadra os frames por contagem de caracteres
-    Recebe uma lista de frames, onde cada frame é uma lista de bits
-    Retorna o trem de bits desenquadrado
+    Desfaz o enquadramento por contagem de caracteres.
+    bitStream: lista de bits (inteiros) no formato [header + dados] * N
+    return: lista de bits contendo apenas os dados reais, sem os cabeçalhos.
     """
-    bitStream = []
-    for frame in frames:
-      # Seleciona os 6 primeiros bits do quadro, converte para string e depois para inteiro
-      # Esses 6 bits representam o tamanho do frame
-      frame_size = int(''.join(map(str, frame[:8])), 2)
-      # Seleciona os próximos bits do quadro, que são os dados reais
-      data_bits = frame[8:8 + frame_size]
-      # Adiciona os bits de dados (data_bits) na lista bitStream
-      bitStream.extend(data_bits)
-    # Converte a lista de bits para uma string de bits
-    return ''.join(map(str, bitStream))
+    i = 0
+    recovered_bits = []
+
+    while i < len(bitStream):
+        if i + 8 > len(bitStream):
+            break  # Não há bits suficientes para o cabeçalho
+
+        # Lê os primeiros 8 bits como cabeçalho (tamanho do frame)
+        size_bits = bitStream[i:i+8]
+        frame_size = int(''.join(map(str, size_bits)), 2)
+
+        # Recupera os dados do frame conforme o tamanho informado
+        start = i + 8
+        end = start + frame_size
+        data_bits = bitStream[start:end]
+
+        # Adiciona os dados ao bitstream final
+        recovered_bits.extend(data_bits)
+
+        # Avança para o próximo quadro
+        i = end
+
+    return recovered_bits
   
   def byteInsertionUnframing(self, frames):
     """
