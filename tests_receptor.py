@@ -154,6 +154,27 @@ def test_checkHamming():
   assert result == esperado, f"Esperado {esperado}, mas retornou {result}"
 
 ################################################################################
+# Fluxo completo de transmissão e recepção
+################################################################################
+
+def test_full_transmission_reception():
+  # Transmissão
+  text = "Hello World"
+  bits = tx.text2Binary(text)
+  framed_bits = tx.chCountFraming(bits, frame_size=8)
+  bitStream = [bit for frame in framed_bits for bit in frame]
+  edc_bits = tx.addCRC(bitStream)
+  modulated_signal = tx.ASK(edc_bits, 1, 5)
+
+  # Recepção
+  demodulated_bits = rx.demoduleASK(modulated_signal)
+  unframed_bits = rx.chCountUnframing(list(map(int, demodulated_bits)))
+  valid = rx.checkCRC(list(map(int, unframed_bits)))
+  if valid:
+    received_text = rx.bits2Text(list(map(int, unframed_bits)))
+    assert received_text == text, f"Erro na recepção: esperado '{text}', mas recebido '{received_text}'"
+
+################################################################################
 # Roda todos os testes
 ################################################################################
 
@@ -175,6 +196,8 @@ def rodar_todos_os_testes():
   test_checkEvenParity()
   test_checkCRC()
   test_checkHamming()
+  # Fluxo completo de transmissão e recepção
+  test_full_transmission_reception()
   print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":

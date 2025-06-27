@@ -33,31 +33,31 @@ def socketTrasmission(config_transmissao):
 
     # EDC
     if edc == "Bit de Paridade Par":
-        modulated_stream = tx.addEvenParityBit(framed_stream)
+        edc_stream = tx.addEvenParityBit(framed_stream)
     elif edc == "CRC":
-        modulated_stream = tx.addCRC(framed_stream)
+        edc_stream = tx.addCRC(framed_stream)
     elif edc == "Hamming":
-        modulated_stream = tx.addHamming(framed_stream)
+        edc_stream = tx.addHamming(framed_stream)
     else:
-        modulated_stream = framed_stream
+        edc_stream = framed_stream
 
     # Modulação BB (banda base)
     if mod_bb == "NRZ":
-        signal_bb = tx.polarNRZCoder(modulated_stream)
+        signal_bb = tx.polarNRZCoder(framed_stream)
     elif mod_bb == "Manchester":
-        signal_bb = tx.manchesterCoder(modulated_stream)
+        signal_bb = tx.manchesterCoder(framed_stream)
     elif mod_bb == "Bipolar":
-        signal_bb = tx.bipolarCoder(modulated_stream)
+        signal_bb = tx.bipolarCoder(framed_stream)
     else:
-        signal_bb = modulated_stream
+        signal_bb = edc_stream
 
     # Modulação por portadora
     if mod_bp == "ASK":
-        modulated_signal = tx.ASK(modulated_stream, A=1, f=1000)
+        modulated_signal = tx.ASK(framed_stream, A=1, f=1000)
     elif mod_bp == "FSK":
-        modulated_signal = tx.FSK(modulated_stream, A=1, f1=2000, f2=1000)
+        modulated_signal = tx.FSK(framed_stream, A=1, f1=2000, f2=1000)
     elif mod_bp == "8-QAM":
-        modulated_signal = tx.QAM8(modulated_stream, A=1, f=1000)
+        modulated_signal = tx.QAM8(framed_stream, A=1, f=1000)
     else:
         modulated_signal = signal_bb
 

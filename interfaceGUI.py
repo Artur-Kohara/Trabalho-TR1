@@ -109,7 +109,7 @@ class InterfaceGUI(Gtk.Window):
       Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
     )
 
-  def transmit_message(self):
+  def transmit_message(self, widget):
     config = {
         "mod_bp": next((k for k, v in self.bp_opts.items() if v.get_active())),
         "mod_bb": next((k for k, v in self.bb_opts.items() if v.get_active())),

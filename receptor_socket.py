@@ -105,4 +105,4 @@ def start_receiver(gui):
             text = rx.receive(bits_corr)
 
             # Atualizar interface
-            GLib.idle_add(update_interface, gui, demod_bb, signal, text)
+            GLib.idle_add(update_interface, gui, demod_bb, bits_bb, text)
