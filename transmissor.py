@@ -38,17 +38,24 @@ class Transmitter:
   #Enquadramento por contagem de caracteres
   #Recebe um trem de bits (lista de inteiros), e o tamanho do quadro 
   #Retorna uma lista de quadros, onde cada quadro é uma lista de inteiros
-  def chCountFraming(self, bitStream, frame_size):
+  def chCountFraming(self, bitStream, frame_size, edc_type):
     frames = [] 
     stream_size = len(bitStream)  
 
     #Loop para dividir o bitstream em quadros de tamanho frame_size
     for i in range(0, stream_size, frame_size):
         frame_data = bitStream[i: i + frame_size]  #Fatia o bitstream em quadros de tamanho frame_size
+        #Aplica EDC na parte de dados do quadro
+        if edc_type == "Bit de Paridade Par":
+          edc_frame = self.addEvenParityBit(frame_data)
+        elif edc_type == "CRC":
+          edc_frame = self.addCRC(frame_data)
+        elif edc_type == "Hamming":
+          edc_frame = self.addHamming(frame_data)
         frame_size_bits = len(frame_data)  #Pode ser menor que frame_size no último quadro
         #Converte o tamanho do quadro (em bits) para uma lista de inteiros representando o binário
         frame_size_binary = [int(bit) for bit in format(frame_size_bits, '08b')]  #8 bits para o tamanho (ate 11111111 = 255)
-        frame = frame_size_binary + frame_data  #Concatenando a contagem de tamanho com os dados binários
+        frame = frame_size_binary + edc_frame  #Concatenando a contagem de tamanho com os dados binários
         frames.append(frame) 
 
     return frames
@@ -56,7 +63,7 @@ class Transmitter:
   #Enquadramento com flags e inserção de bytes
   #Recebe um trem de bits (lista de inteiros), e o tamanho inicial do quadro (vai aumentar com inserção de flags e possivelmente de escape)
   #Retorna uma lista de quadros, onde cada quadro é uma lista de inteiros
-  def byteInsertionFraming(self, bitStream, frame_size):
+  def byteInsertionFraming(self, bitStream, frame_size, edc_type):
     frames = []
     flag = [0,1,1,1,1,1,1,0] #0x7E
     escape = [0,1,1,1,1,1,0,1] #0x7D
@@ -68,9 +75,16 @@ class Transmitter:
     while i < stream_size:
       #Fatia o bitstream em quadros de tamanho inicial frame_size
       frame_data = bitStream[i:i + frame_size]
+      #Aplica EDC na parte de dados do quadro
+      if edc_type == "Bit de Paridade Par":
+        edc_frame = self.addEvenParityBit(frame_data)
+      elif edc_type == "CRC":
+        edc_frame = self.addCRC(frame_data)
+      elif edc_type == "Hamming":
+        edc_frame = self.addHamming(frame_data)
       #Verificar se a sequência de flag ocorre no quadro e aplicar byte de escape
-      frame_data = self.insertEscapeBytes(frame_data, flag, escape)
-      frame = flag + frame_data + flag
+      edc_frame = self.insertEscapeBytes(frame_data, flag, escape)
+      frame = flag + edc_frame + flag
       frames.append(frame)
       #Avançar para o próximo quadro
       i += frame_size
@@ -100,7 +114,7 @@ class Transmitter:
   #Enquadramento com flags e inserção de bits
   #Recebe um trem de bits (lista de inteiros), e o tamanho inicial do quadro (vai aumentar com inserção de flags e possivelmente de bits)
   #Retorna uma lista de quadros, onde cada quadro é uma lista de inteiros
-  def bitInsertionFraming (self, bitStream, frame_size):
+  def bitInsertionFraming (self, bitStream, frame_size, edc_type):
     frames = []
     flag = [0,1,1,1,1,1,1,0] #0x7E
 
@@ -111,9 +125,16 @@ class Transmitter:
     while i < stream_size:
       #Fatia o bitstream em quadros de tamanho inicial frame_size
       frame_data = bitStream[i:i + frame_size]
+      #Aplica EDC na parte de dados do quadro
+      if edc_type == "Bit de Paridade Par":
+        edc_frame = self.addEvenParityBit(frame_data)
+      elif edc_type == "CRC":
+        edc_frame = self.addCRC(frame_data)
+      elif edc_type == "Hamming":
+        edc_frame = self.addHamming(frame_data)
       #Verificar se a sequência de 5 bits 1 seguidos ocorre e aplicar bit 0 após a sequência
-      frame_data = self.insertBit0(frame_data)
-      frame = flag + frame_data + flag
+      edc_frame = self.insertBit0(frame_data)
+      frame = flag + edc_frame + flag
       frames.append(frame)
       #Avançar para o próximo quadro
       i += frame_size

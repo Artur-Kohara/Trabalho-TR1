@@ -202,71 +202,59 @@ class Receiver:
 
   def chCountUnframing(self, bitStream, edc_type):
     """
-    Desfaz o enquadramento por contagem de caracteres considerando o EDC aplicado sobre cada quadro
-    bitStream: lista de bits no formato [(header + dados) + EDC] * N
-    edc_type: "Bit de Paridade Par", "CRC" ou "Hamming"
-    return: lista de bits limpos (dados dos quadros sem cabeçalho nem EDC)
+    Desfaz o enquadramento por contagem de caracteres, considerando o tipo de EDC usado
+    bitStream: lista de bits (inteiros) no formato [tamanho(8 bits) + dados + EDC] * N
+    edc_type: string indicando o tipo de detecção de erro ("Bit de Paridade Par", "CRC", "Hamming")
+    return: lista de lista de bits limpos (sem EDC e sem cabeçalho), ou levanta erro se houver falha
     """
     i = 0
-    recovered_data = []
+    recovered_frames = []
 
     while i < len(bitStream):
-        if i + 8 > len(bitStream):
-            break  # não há bits suficientes para o cabeçalho
+      if i + 8 > len(bitStream):
+        break  # Não há bits suficientes para o cabeçalho
 
-        # Lê os 8 bits de tamanho (header)
-        size_bits = bitStream[i:i+8]
-        frame_size = int(''.join(map(str, size_bits)), 2)
+      # Cabeçalho com tamanho original dos dados (sem EDC)
+      size_bits = bitStream[i:i+8]
+      frame_size = int(''.join(map(str, size_bits)), 2)
 
-        # Lê os bits de dados
-        start_data = i + 8
-        end_data = start_data + frame_size
-        # Verifica se o tamanho é válido
-        if end_data > len(bitStream):
-            raise ValueError("Erro de tamanho")
-            break
+      # Determina o tamanho do frame com EDC
+      edc_extra = 0
+      if edc_type == "Bit de Paridade Par":
+        edc_extra = 1
+      elif edc_type == "CRC":
+        edc_extra = 7
+      elif edc_type == "Hamming":
+        # Para Hamming, o tamanho final depende da quantidade de bits de paridade inseridos
+        # m + p bits totais, onde m = frame_size e p é tal que 2^p >= m + p + 1
+        m = frame_size
+        p = 0
+        while (2 ** p) < (m + p + 1):
+            p += 1
+        edc_extra = p
 
-        header_and_data = size_bits + bitStream[start_data:end_data]
+      start = i + 8
+      end = start + frame_size + edc_extra
+      frame_with_edc = bitStream[start:end]
 
-        # Define número de bits extras do EDC com base no tipo
-        edc_extra = 0
-        if edc_type == "Bit de Paridade Par":
-            edc_extra = 1
-        elif edc_type == "CRC":
-            edc_extra = 7
-        elif edc_type == "Hamming":
-            m = len(header_and_data)
-            p = 0
-            while (2 ** p) < (m + p + 1):
-                p += 1
-            edc_extra = p
+      # Verifica e remove o EDC
+      if edc_type == "Bit de Paridade Par":
+        cleaned = self.checkEvenParityBit(frame_with_edc)
+      elif edc_type == "CRC":
+        cleaned = self.checkCRC(frame_with_edc)
+      elif edc_type == "Hamming":
+        cleaned = self.checkHamming(frame_with_edc)
 
-        # Lê o frame completo com EDC
-        end_frame = end_data + edc_extra
-        frame_with_edc = bitStream[i:end_frame]
-        # Verifica se o tamanho do frame está correto
-        if len(frame_with_edc) < len(header_and_data) + edc_extra:
-            break
+      if cleaned is False:
+        raise ValueError("Erro de detecção de EDC. Quadro inválido.")
+      
+      # Adiciona bits limpos ao resultado
+      recovered_frames.extend(cleaned)
 
-        # Valida e limpa EDC
-        if edc_type == "Bit de Paridade Par":
-            cleaned = self.checkEvenParityBit(frame_with_edc)
-        elif edc_type == "CRC":
-            cleaned = self.checkCRC(frame_with_edc)
-        elif edc_type == "Hamming":
-            cleaned = self.checkHamming(frame_with_edc)
+      # Avança para o próximo quadro
+      i = end
 
-        if cleaned == False:
-            raise ValueError("Erro de detecção de EDC. Quadro inválido.")
-
-        # Remove os 8 bits de cabeçalho
-        cleaned_data = cleaned[8:]
-        recovered_data.extend(cleaned_data)
-
-        # Avança para o próximo quadro
-        i = end_frame
-
-    return recovered_data
+    return recovered_frames
   
   def byteInsertionUnframing(self, bitStream):
     """

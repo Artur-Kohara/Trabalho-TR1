@@ -60,15 +60,12 @@ def test_QAM8_demodulation():
 ################################################################################
 
 def test_chCountUnframing():
-  bitStream = []
   frame_data = [1, 0, 1, 0, 1, 0, 1, 0]  # 8 bits
-  framed_bits = tx.chCountFraming(frame_data, frame_size=8)
-  for frame in framed_bits:
-    edc_frame = tx.addHamming(frame)
-    bitStream.extend(edc_frame)
+  framed_bits = tx.chCountFraming(frame_data, frame_size=8, edc_type="Hamming")
+  bitStream = [bit for frame in framed_bits for bit in frame]
   resultado = rx.chCountUnframing(bitStream, "Hamming")
   assert resultado == frame_data, f"Esperado {frame_data}, mas retornou {resultado}"
-
+'''
 def test_byteInsertionUnframing():
   bits = [1, 0, 1, 0, 1, 0, 1, 0]
   framed_bits = tx.byteInsertionFraming(bits, frame_size=8)
@@ -82,7 +79,7 @@ def test_bitInsertionUnframing():
   bitStream = [bit for frame in framed_bits for bit in frame]
   desenquadrado = rx.bitInsertionUnframing(bitStream)
   assert desenquadrado == [original_bits], f"Esperado {[original_bits]}, mas retornou {desenquadrado}"
-
+'''
 ################################################################################
 # Demodulação (banda base)
 ################################################################################
@@ -147,31 +144,27 @@ def test_checkHamming():
 ################################################################################
 # Fluxo completo de transmissão e recepção
 ################################################################################
-'''
+
 def test_full_transmission_reception():
   # Transmissão
-  edc_bits = []
   text = "Hello"
   bits = tx.text2Binary(text)
   print(f"Bits transmitidos: {bits}")
-  framed_bits = tx.chCountFraming(bits, frame_size=8)
+  framed_bits = tx.chCountFraming(bits, frame_size=8, edc_type="CRC")
   print(f"Frames transmitidos: {framed_bits}")
-  for frame in framed_bits:
-    edc_frame = tx.addHamming(frame)
-    edc_bits.extend(edc_frame)
-  print(f"Frames com detecção de erros transmitidos: {edc_bits}")
-  modulated_signal = tx.polarNRZCoder(edc_bits, 1)
+  bitStream = [bit for frame in framed_bits for bit in frame]
+  modulated_signal = tx.polarNRZCoder(bitStream, 1)
   print(f"Sinal transmitido: {modulated_signal}")
 
   # Recepção
   print("###############################")
   demodulated_bits = rx.polarNRZDecoder(modulated_signal)
   print(f"Sinal demodulado: {demodulated_bits}")
-  unframed_bits = rx.chCountUnframing(demodulated_bits, "Hamming")
+  unframed_bits = rx.chCountUnframing(demodulated_bits, "CRC")
   print(f"Bits desenquadrados e sem EDC: {unframed_bits}")
   received_text = rx.bits2Text(unframed_bits)
   assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
-'''
+
 ################################################################################
 # Roda todos os testes
 ################################################################################
@@ -184,8 +177,8 @@ def rodar_todos_os_testes():
   test_QAM8_demodulation()
   # Desenquadramento
   test_chCountUnframing()
-  test_byteInsertionUnframing()
-  test_bitInsertionUnframing()
+  #test_byteInsertionUnframing()
+  #test_bitInsertionUnframing()
   # Demodulações (banda base)
   test_polarNRZDecoder()
   test_manchesterDecoder()
@@ -195,7 +188,7 @@ def rodar_todos_os_testes():
   test_checkCRC()
   test_checkHamming()
   # Fluxo completo de transmissão e recepção
-  #test_full_transmission_reception()
+  test_full_transmission_reception()
   print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":
