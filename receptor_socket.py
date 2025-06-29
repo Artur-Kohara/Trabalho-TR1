@@ -56,11 +56,11 @@ def start_receiver(gui):
 
             # 1. Demodulação de portadora
             if mod_bp == "ASK":
-                demod_bp = rx.demoduleASK(signal_bp)
+                demod_bp = rx.demoduleASK(signal_bp, 100, 0.1)
             elif mod_bp == "FSK":
-                demod_bp = rx.demoduleFSK(signal_bp, f0=1000, f1=2000)
+                demod_bp = rx.demoduleFSK(signal_bp, f0=4, f1=2)
             elif mod_bp == "8-QAM":
-                demod_bp = rx.demodule8QAM(signal_bp)
+                demod_bp = rx.demodule8QAM(signal_bp, 1, 2, 100)
             else:
                 raise ValueError("Modulação de portadora inválida")
 

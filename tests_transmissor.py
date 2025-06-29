@@ -357,34 +357,25 @@ def test_addHamming():
 
 def test_plot_baseband():
   transmitter = Transmitter()
-  bits = [1, 0, 1, 1, 0, 0, 1,1,0,1]  
-  # Teste NRZ
+  bits = [1, 0, 1, 1, 0, 0, 1, 1, 0, 1]
   print("\nNRZ Polar:")
-  transmitter.plot_baseband(bits, 'nrz')
-  
-  # Teste Manchester
+  transmitter.plotBaseband(bits, 'nrz')
   print("\nManchester:")
-  transmitter.plot_baseband(bits, 'manchester')
-  
-  # Teste Bipolar
+  transmitter.plotBaseband(bits, 'manchester')
   print("\nBipolar (AMI):")
-  transmitter.plot_baseband(bits, 'bipolar')
+  transmitter.plotBaseband(bits, 'bipolar')
+  plt.show() 
 
 def test_plot_passband():
   transmitter = Transmitter()
-  bits = [1, 0, 1, 0, 1, 0,1, 1,0,0,1,0,1]
-  
-  # Teste ASK
+  bits = [1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1]
   print("\nASK:")
-  transmitter.plot_passband(bits, 'ask')
-  
-  # Teste FSK
+  transmitter.plotPassband(bits, 'ask')
   print("\nFSK:")
-  transmitter.plot_passband(bits, 'fsk')
-  
-  # Teste QAM
+  transmitter.plotPassband(bits, 'fsk')
   print("\nQAM8:")
-  transmitter.plot_passband(bits, 'qam')
+  transmitter.plotPassband(bits, '8-QAM')
+  plt.show()
 
 ################################################
 # Chama as funções de teste

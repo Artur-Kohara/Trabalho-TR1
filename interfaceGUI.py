@@ -158,9 +158,7 @@ class InterfaceGUI(Gtk.Window):
 
     # Plot BB
     ax1 = self.figure_bb.gca()
-    ax1.clear()
-    ax1.plot(mod_bb)
-    ax1.set_title("Modulação Banda Base")
+    tx.plotBaseband(bits_framed, config["mod_bb"], ax=ax1)
     self.canvas_bb.draw()
 
     # Modulação BP
@@ -173,9 +171,7 @@ class InterfaceGUI(Gtk.Window):
 
     # Plot BP
     ax2 = self.figure_bp.gca()
-    ax2.clear()
-    ax2.plot(mod_bp)
-    ax2.set_title("Modulação Portadora")
+    tx.plotPassband(bits_framed, config["mod_bp"], A=1, f=1000, f1=1000, f2=2000, ax=ax2)
     self.canvas_bp.draw()
 
     # Envia via socket

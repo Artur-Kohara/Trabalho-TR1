@@ -46,10 +46,8 @@ class Transmitter:
     for i in range(0, stream_size, frame_size):
         frame_data = bitStream[i: i + frame_size]  #Fatia o bitstream em quadros de tamanho frame_size
         frame_size_bits = len(frame_data)  #Pode ser menor que frame_size no último quadro
-        print(f"Tamanho dos dados: {frame_size_bits}")
         #Converte o tamanho do quadro (em bits) para uma lista de inteiros representando o binário
         frame_size_binary = [int(bit) for bit in format(frame_size_bits, '08b')]  #8 bits para o tamanho (ate 11111111 = 255)
-        print(f"Header: {frame_size_binary}")
         #Aplica EDC na parte de dados do quadro
         if edc_type == "Bit de Paridade Par":
           edc_frame = self.addEvenParityBit(frame_data)
@@ -379,101 +377,81 @@ class Transmitter:
 
   #Plota sinais de modulação digital em banda base.
   #Recebe trem de bits(lista de inteiros), tipo de modulação (string) e valor de tensão V(float)
-  def plot_baseband(self, bitStream, modulation_type, V=None):
+  def plotBaseband(self, bitStream, modulation_type, V=None, ax=None):
     if V is None:
-      V = self.config['V']
-    
+      V = self.config.get('V', 1)
+
     # Gera o sinal modulado
     if modulation_type.lower() == 'nrz':
       signal = self.polarNRZCoder(bitStream, V)
-      time_scale = np.arange(len(signal))  # 1 amostra por bit
-      bit_duration = 1
+      time_scale = np.arange(len(signal))
     elif modulation_type.lower() == 'manchester':
       signal = self.manchesterCoder(bitStream)
-      # Corrige a escala de tempo: 2 amostras por bit, mas 1 unidade de tempo por bit
       time_scale = np.arange(0, len(bitStream), 0.5)
-      bit_duration = 1
     elif modulation_type.lower() == 'bipolar':
       signal = self.bipolarCoder(bitStream, V)
       time_scale = np.arange(len(signal))
-      bit_duration = 1
     else:
       raise ValueError("Tipo de modulação inválido")
 
-    plt.figure(figsize=(12, 4))
+    # Cria novo plot se nenhum eixo foi passado
+    if ax is None:
+      fig, ax = plt.subplots(figsize=(12, 4))
+
+    ax.clear()
+    ax.step(time_scale, signal, where='post', linewidth=2)
     
-    # Plotagem especial para Manchester
     if modulation_type.lower() == 'manchester':
-      plt.step(time_scale, signal, where='post', linewidth=2)
-      # Adiciona marcadores no MEIO de cada bit (transição Manchester)
       for i in range(len(bitStream)):
-        plt.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)  # Linha no meio do bit
-    else:
-      plt.step(time_scale, signal, where='post', linewidth=2)
+        ax.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)
     
-    # Configurações comuns
-    plt.title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
-    plt.xlabel("Tempo (unidades de bit)")
-    plt.ylabel("Amplitude")
-    plt.grid(True)
-    
-    # Limites do eixo Y
-    if modulation_type.lower() == 'nrz':
-      plt.ylim(-V*1.2, V*1.2)
+    ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    ax.set_xlabel("Tempo (unidades de bit)")
+    ax.set_ylabel("Amplitude")
+    ax.grid(True)
+
+    if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
+      ax.set_ylim(-V * 1.2, V * 1.2)
     elif modulation_type.lower() == 'manchester':
-      plt.ylim(-0.2, 1.2)
-    else:  # bipolar
-      plt.ylim(-V*1.2, V*1.2)
-    
-    # Marcadores de início de bit
-    for i in range(len(bitStream) + 1):
-      plt.axvline(x=i, color='r', linestyle='-', alpha=0.3)  # Linhas vermelhas marcando início de cada bit
-    
-    plt.tight_layout()
-    plt.show()
+      ax.set_ylim(-0.2, 1.2)
+
+    if ax is None:
+      plt.tight_layout()
+      plt.show()
+
 
   #Plota sinais de modulação digital em banda passante
   #Recebe trem de bits (lista de inteiros), tipo de modulação (string), Amplitude, frequência, frequência 1 e 2(FSK), em que todos são floats
-  def plot_passband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None):
-    # Usa valores da configuração se não fornecidos
-    A = A or self.config['A']
-    f = f or self.config['f']
-    f1 = A or self.config['f1']
-    f2 = f or self.config['f2']
-    
-    # Gera o sinal modulado
-    if modulation_type.lower() == 'ask':
-        signal = self.ASK(bitStream, A, f)
-        samples_per_bit = 100
-    elif modulation_type.lower() == 'fsk':
-        f1 = f1 or self.config['f1']
-        f2 = f2 or self.config['f2']
-        signal = self.FSK(bitStream, A, f1, f2)
-        samples_per_bit = 100
-    elif modulation_type.lower() == 'qam':
-        signal = self.QAM8(bitStream, A, f)
-        samples_per_bit = 33  # 100 amostras / 3 bits
-    else:
-        raise ValueError("Tipo de modulação inválido. Use 'ask', 'fsk' ou 'qam'")
+  def plotPassband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None, ax=None):
+    A = A or self.config.get('A', 1)
+    f = f or self.config.get('f', 1000)
+    f1 = f1 or self.config.get('f1', 1000)
+    f2 = f2 or self.config.get('f2', 2000)
 
-    plt.figure(figsize=(12, 4))
-    
-    # Cria eixo de tempo em unidades de bit
+    if modulation_type.lower() == 'ask':
+      signal = self.ASK(bitStream, A, f)
+      samples_per_bit = 100
+    elif modulation_type.lower() == 'fsk':
+      signal = self.FSK(bitStream, A, f1, f2)
+      samples_per_bit = 100
+    elif modulation_type == '8-QAM':
+      signal = self.QAM8(bitStream, A, f)
+      samples_per_bit = 33
+    else:
+      raise ValueError("Tipo de modulação inválido. Use 'ask', 'fsk' ou '8-QAM'")
+
     t = np.arange(len(signal)) / samples_per_bit
-    
-    # Plotagem
-    plt.plot(t, signal, linewidth=1.5)
-    
-    # Configurações
-    plt.title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
-    plt.xlabel("Tempo (em unidades de bit)")
-    plt.ylabel("Amplitude")
-    plt.grid(True, linestyle='--', alpha=0.7)
-    
-    # Adiciona marcadores de bits
-    num_bits = len(bitStream)
-    for i in range(num_bits + 1):
-        plt.axvline(x=i, color='r', linestyle=':', alpha=0.4)
-    
-    plt.tight_layout()
-    plt.show()
+
+    if ax is None:
+      fig, ax = plt.subplots(figsize=(12, 4))
+
+    ax.clear()
+    ax.plot(t, signal, linewidth=1.5)
+    ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    ax.set_xlabel("Tempo (em unidades de bit)")
+    ax.set_ylabel("Amplitude")
+    ax.grid(True, linestyle='--', alpha=0.7)
+
+    if ax is None:
+      plt.tight_layout()
+      plt.show()

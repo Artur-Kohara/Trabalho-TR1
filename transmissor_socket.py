@@ -43,11 +43,11 @@ def socketTrasmission(config_transmissao):
 
     # Modulação por portadora
     if mod_bp == "ASK":
-        modulated_signal = tx.ASK(framed_stream, A=1, f=1000)
+        modulated_signal = tx.ASK(framed_stream, A=1, f=2)
     elif mod_bp == "FSK":
-        modulated_signal = tx.FSK(framed_stream, A=1, f1=2000, f2=1000)
+        modulated_signal = tx.FSK(framed_stream, A=1, f1=2, f2=4)
     elif mod_bp == "8-QAM":
-        modulated_signal = tx.QAM8(framed_stream, A=1, f=1000)
+        modulated_signal = tx.QAM8(framed_stream, A=1, f=2)
     else:
         modulated_signal = signal_bb
 
