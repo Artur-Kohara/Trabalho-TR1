@@ -121,31 +121,40 @@ class InterfaceGUI(Gtk.Window):
     tx = Transmitter({})
     bits = tx.text2Binary(text)
 
-    # EDC
-    if config["edc"] == "Bit de Paridade Par":
-        bits = tx.addEvenParityBit(bits)
-    elif config["edc"] == "CRC":
-        bits = tx.addCRC(bits)
-    elif config["edc"] == "Hamming":
-        bits = tx.addHamming(bits)
-
     # Enquadramento
     if config["framing"] == "Cont. de Caracteres":
-        frames = tx.chCountFraming(bits, 32)
+        if config["edc"] == "Bit de Paridade Par":
+           frames = tx.chCountFraming(bits, 32, "Bit de Paridade Par")
+        elif config["edc"] == "CRC":
+           frames = tx.chCountFraming(bits, 32, "CRC")
+        elif config["edc"] == "Hamming":
+           frames = tx.chCountFraming(bits, 32, "Hamming")
+
     elif config["framing"] == "Inserção de Bits":
-        frames = tx.bitInsertionFraming(bits, 32)
+        if config["edc"] == "Bit de Paridade Par":
+           frames = tx.bitInsertionFraming(bits, 32, "Bit de Paridade Par")
+        elif config["edc"] == "CRC":
+           frames = tx.bitInsertionFraming(bits, 32, "CRC")
+        elif config["edc"] == "Hamming":
+           frames = tx.bitInsertionFraming(bits, 32, "Hamming")
+
     elif config["framing"] == "Inserção de Bytes":
-        frames = tx.byteInsertionFraming(bits, 32)
+        if config["edc"] == "Bit de Paridade Par":
+           frames = tx.byteInsertionFraming(bits, 32, "Bit de Paridade Par")
+        elif config["edc"] == "CRC":
+           frames = tx.byteInsertionFraming(bits, 32, "CRC")
+        elif config["edc"] == "Hamming":
+           frames = tx.byteInsertionFraming(bits, 32, "Hamming")
 
     bits_framed = [bit for frame in frames for bit in frame]
 
     # Modulação BB
     if config["mod_bb"] == "NRZ":
-        mod_bb = tx.polarNRZCoder(bits_framed)
+        mod_bb = tx.polarNRZCoder(bits_framed, 1)
     elif config["mod_bb"] == "Manchester":
         mod_bb = tx.manchesterCoder(bits_framed)
     elif config["mod_bb"] == "Bipolar":
-        mod_bb = tx.bipolarCoder(bits_framed)
+        mod_bb = tx.bipolarCoder(bits_framed, 1)
 
     # Plot BB
     ax1 = self.figure_bb.gca()

@@ -56,15 +56,13 @@ def start_receiver(gui):
 
             # 1. Demodulação de portadora
             if mod_bp == "ASK":
-                bits_bb_str = rx.demoduleASK(signal_bp)
+                demod_bp = rx.demoduleASK(signal_bp)
             elif mod_bp == "FSK":
-                bits_bb_str = rx.demoduleFSK(signal_bp, f0=1000, f1=2000)
+                demod_bp = rx.demoduleFSK(signal_bp, f0=1000, f1=2000)
             elif mod_bp == "8-QAM":
-                bits_bb_str = rx.demodule8QAM(signal_bp)
+                demod_bp = rx.demodule8QAM(signal_bp)
             else:
                 raise ValueError("Modulação de portadora inválida")
-
-            bits_bb = list(map(int, bits_bb_str))
 
             # 2. Demodulação de banda base
             if mod_bb == "NRZ":
@@ -78,31 +76,33 @@ def start_receiver(gui):
 
             # 3. Desenquadramento
             if framing == "Cont. de Caracteres":
-                frames = [bits_bb]  # simulando 1 frame
-                unframed_bits = rx.chCountUnframing(frames)
+                if edc == "Bit de Paridade Par":
+                    bitStream = rx.chCountUnframing(demod_bb, "Bit de Paridade Par")
+                elif edc == "CRC":
+                    bitStream = rx.chCountUnframing(demod_bb, "CRC")
+                elif edc == "Hamming":
+                    bitStream = rx.chCountUnframing(demod_bb, "Hamming")
+
             elif framing == "Inserção de Bits":
-                frames = [bits_bb]
-                unframed_bits = rx.bitInsertionUnframing(frames)
+                if edc == "Bit de Paridade Par":
+                    bitStream = rx.bitInsertionUnframing(demod_bb, "Bit de Paridade Par")
+                elif edc == "CRC":
+                    bitStream = rx.bitInsertionUnframing(demod_bb, "CRC")
+                elif edc == "Hamming":
+                    bitStream = rx.bitInsertionUnframing(demod_bb, "Hamming")
+
             elif framing == "Inserção de Bytes":
-                frames = [bits_bb]
-                unframed_bits = rx.byteInsertionUnframing(frames)
+                if edc == "Bit de Paridade Par":
+                    bitStream = rx.byteInsertionUnframing(demod_bb, "Bit de Paridade Par")
+                elif edc == "CRC":
+                    bitStream = rx.byteInsertionUnframing(demod_bb, "CRC")
+                elif edc == "Hamming":
+                    bitStream = rx.byteInsertionUnframing(demod_bb, "Hamming")
+
             else:
                 raise ValueError("Enquadramento inválido")
 
-            # 4. Correção de erro
-            bits_corr = ""
-            if edc == "Bit de Paridade Par":
-                valid = rx.checkEvenParityBit(list(map(int, unframed_bits)))
-                bits_corr = unframed_bits[:-1] if valid else ""
-            elif edc == "CRC":
-                valid = rx.checkCRC(list(map(int, unframed_bits)))
-                bits_corr = unframed_bits[:-7] if valid else ""
-            elif edc == "Hamming":
-                bits_corr, _ = rx.checkHamming(list(map(int, unframed_bits)))
-            else:
-                raise ValueError("EDC inválido")
-
-            text = rx.receive(bits_corr)
+            text = rx.receive(bitStream)
 
             # Atualizar interface
-            GLib.idle_add(update_interface, gui, demod_bb, bits_bb, text)
+            GLib.idle_add(update_interface, gui, demod_bb, demod_bp, text)

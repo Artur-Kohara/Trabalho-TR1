@@ -20,34 +20,39 @@ def socketTrasmission(config_transmissao):
 
     # Enquadramento
     if framing == "Cont. de Caracteres":
-        frames = tx.chCountFraming(bits, 32)
+        if edc == "Bit de Paridade Par":
+            edc_stream = tx.chCountFraming(bits, 32, "Bit de Paridade Par")
+        elif edc == "CRC":
+            edc_stream = tx.chCountFraming(bits, 32, "CRC")
+        elif edc == "Hamming":
+            edc_stream = tx.chCountFraming(bits, 32, "Hamming")
+
     elif framing == "Inserção de Bits":
-        frames = tx.bitInsertionFraming(bits, 32)
+        if edc == "Bit de Paridade Par":
+            edc_stream = tx.bitInsertionFraming(bits, 32, "Bit de Paridade Par")
+        elif edc == "CRC":
+            edc_stream = tx.bitInsertionFraming(bits, 32, "CRC")
+        elif edc == "Hamming":
+            edc_stream = tx.bitInsertionFraming(bits, 32, "Hamming")
+
     elif framing == "Inserção de Bytes":
-        frames = tx.byteInsertionFraming(bits, 32)
-    else:
-        frames = [bits]  # fallback
+        if edc == "Bit de Paridade Par":
+            edc_stream = tx.byteInsertionFraming(bits, 32, "Bit de Paridade Par")
+        elif edc == "CRC":
+            edc_stream = tx.byteInsertionFraming(bits, 32, "CRC")
+        elif edc == "Hamming":
+            edc_stream = tx.byteInsertionFraming(bits, 32, "Hamming")
 
     # Unifica os frames em uma única lista de bits
-    framed_stream = [bit for frame in frames for bit in frame]
-
-    # EDC
-    if edc == "Bit de Paridade Par":
-        edc_stream = tx.addEvenParityBit(framed_stream)
-    elif edc == "CRC":
-        edc_stream = tx.addCRC(framed_stream)
-    elif edc == "Hamming":
-        edc_stream = tx.addHamming(framed_stream)
-    else:
-        edc_stream = framed_stream
+    framed_stream = [bit for frame in edc_stream for bit in frame]
 
     # Modulação BB (banda base)
     if mod_bb == "NRZ":
-        signal_bb = tx.polarNRZCoder(framed_stream)
+        signal_bb = tx.polarNRZCoder(framed_stream, 1)
     elif mod_bb == "Manchester":
         signal_bb = tx.manchesterCoder(framed_stream)
     elif mod_bb == "Bipolar":
-        signal_bb = tx.bipolarCoder(framed_stream)
+        signal_bb = tx.bipolarCoder(framed_stream, 1)
     else:
         signal_bb = edc_stream
 

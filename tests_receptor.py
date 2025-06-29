@@ -147,20 +147,20 @@ def test_checkHamming():
 
 def test_full_transmission_reception():
   # Transmissão
-  text = "Hello"
+  text = "t"
   bits = tx.text2Binary(text)
   print(f"Bits transmitidos: {bits}")
-  framed_bits = tx.bitInsertionFraming(bits, frame_size=8, edc_type="Hamming")
+  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="Hamming")
   print(f"Frames transmitidos: {framed_bits}")
   bitStream = [bit for frame in framed_bits for bit in frame]
-  modulated_signal = tx.QAM8(bitStream, 1, 2)
+  modulated_signal = tx.polarNRZCoder(bitStream, 1)
   print(f"Sinal transmitido: {modulated_signal}")
 
   # Recepção
   print("###############################")
-  demodulated_bits = rx.demodule8QAM(modulated_signal, 1, 2, 100)
+  demodulated_bits = rx.polarNRZDecoder(modulated_signal, 1)
   print(f"Sinal demodulado: {demodulated_bits}")
-  unframed_bits = rx.bitInsertionUnframing(demodulated_bits, "Hamming")
+  unframed_bits = rx.byteInsertionUnframing(demodulated_bits, "Hamming")
   print(f"Bits desenquadrados e sem EDC: {unframed_bits}")
   received_text = rx.bits2Text(unframed_bits)
   assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
