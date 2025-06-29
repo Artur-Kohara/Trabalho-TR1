@@ -82,6 +82,11 @@ class Transmitter:
         edc_frame = self.addCRC(frame_data)
       elif edc_type == "Hamming":
         edc_frame = self.addHamming(frame_data)
+
+      #Preenche com zeros até múltiplo de 8
+        pad_len = (8 - len(edc_frame) % 8) % 8
+        edc_frame += [0] * pad_len  # Padding com 0s
+        
       #Verificar se a sequência de flag ocorre no quadro e aplicar byte de escape
       frame_with_escape = self.insertEscapeBytes(edc_frame, flag, escape)
       frame = flag + frame_with_escape + flag
