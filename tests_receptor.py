@@ -68,9 +68,9 @@ def test_chCountUnframing():
 
 def test_byteInsertionUnframing():
   bits = [1, 0, 1, 0, 1, 0, 1, 0]
-  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="Bit de Paridade Par")
+  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="CRC")
   bitStream = [bit for frame in framed_bits for bit in frame]
-  resultado = rx.byteInsertionUnframing(bitStream, "Bit de Paridade Par")
+  resultado = rx.byteInsertionUnframing(bitStream, "CRC")
   assert resultado == bits, f"Esperado {bits}, mas retornou {resultado}"
 
 def test_bitInsertionUnframing():
@@ -150,7 +150,7 @@ def test_full_transmission_reception():
   text = "Artur Kohara"
   bits = tx.text2Binary(text)
   print(f"Bits transmitidos: {bits}")
-  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="Hamming")
+  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="Bit de Paridade Par")
   print(f"Frames transmitidos: {framed_bits}")
   bitStream = [bit for frame in framed_bits for bit in frame]
   modulated_signal = tx.polarNRZCoder(bitStream, 1)
@@ -160,7 +160,7 @@ def test_full_transmission_reception():
   print("###############################")
   demodulated_bits = rx.polarNRZDecoder(modulated_signal, 1)
   print(f"Sinal demodulado: {demodulated_bits}")
-  unframed_bits = rx.byteInsertionUnframing(demodulated_bits, "Hamming")
+  unframed_bits = rx.byteInsertionUnframing(demodulated_bits, "Bit de Paridade Par")
   print(f"Bits desenquadrados e sem EDC: {unframed_bits}")
   received_text = rx.bits2Text(unframed_bits)
   assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
