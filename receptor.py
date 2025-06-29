@@ -275,10 +275,15 @@ class Receiver:
         if bitStream[i:i+8] == flag:
             i += 8  # pula a flag inicial
             frame_with_edc = []
+            # Acha o cabeçalho e encontra o tamanho do padding adicionado
+            header = bitStream[i:i+8]
+            print(f"Header: {header}")
+            padding_len = int(''.join(map(str, header)), 2)
+            print(f"Tamanho dos dados: {padding_len}")
+            i += 8 # pula o header
 
             # Coleta os bits até a próxima flag
             while i <= n - 8 and bitStream[i:i+8] != flag:
-                bit = bitStream[i]
                 byte = bitStream[i:i+8]
 
                 # Se o byte for um escape, seleciona o próximo byte como dado e adiciona ele no resultado
@@ -287,20 +292,26 @@ class Receiver:
                     frame_with_edc.extend(next_byte)
                     i += 16
                 else:
-                    frame_with_edc.append(bit)
-                    i += 1
+                    frame_with_edc.extend(byte)
+                    i += 8
 
             # Pula a flag final
             if bitStream[i:i+8] == flag:
                 i += 8
 
+            print(f"Frame sem flags e escapes: {frame_with_edc}")
+
+            if padding_len != 0:
+              frame_without_padding = frame_with_edc[:-padding_len]
+            print(f"Quadro sem padding: {frame_without_padding}")
+
             # Verifica e remove o EDC
             if edc_type == "Bit de Paridade Par":
-                cleaned = self.checkEvenParityBit(frame_with_edc)
+                cleaned = self.checkEvenParityBit(frame_without_padding)
             elif edc_type == "CRC":
-                cleaned = self.checkCRC(frame_with_edc)
+                cleaned = self.checkCRC(frame_without_padding)
             elif edc_type == "Hamming":
-                cleaned = self.checkHamming(frame_with_edc)
+                cleaned = self.checkHamming(frame_without_padding)
 
             if cleaned == False:
                 raise ValueError("Erro de EDC detectado")

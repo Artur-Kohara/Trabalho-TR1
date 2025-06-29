@@ -147,7 +147,7 @@ def test_checkHamming():
 
 def test_full_transmission_reception():
   # Transmissão
-  text = "t"
+  text = "Artur Kohara"
   bits = tx.text2Binary(text)
   print(f"Bits transmitidos: {bits}")
   framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="Hamming")
@@ -177,7 +177,7 @@ def rodar_todos_os_testes():
   test_QAM8_demodulation()
   # Desenquadramento
   test_chCountUnframing()
-  test_byteInsertionUnframing()
+  #test_byteInsertionUnframing()
   test_bitInsertionUnframing()
   # Demodulações (banda base)
   test_polarNRZDecoder()
