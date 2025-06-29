@@ -20,28 +20,13 @@ def socketTrasmission(config_transmissao):
 
     # Enquadramento
     if framing == "Cont. de Caracteres":
-        if edc == "Bit de Paridade Par":
-            edc_stream = tx.chCountFraming(bits, 32, "Bit de Paridade Par")
-        elif edc == "CRC":
-            edc_stream = tx.chCountFraming(bits, 32, "CRC")
-        elif edc == "Hamming":
-            edc_stream = tx.chCountFraming(bits, 32, "Hamming")
+        edc_stream = tx.chCountFraming(bits, 32, edc)
 
     elif framing == "Inserção de Bits":
-        if edc == "Bit de Paridade Par":
-            edc_stream = tx.bitInsertionFraming(bits, 32, "Bit de Paridade Par")
-        elif edc == "CRC":
-            edc_stream = tx.bitInsertionFraming(bits, 32, "CRC")
-        elif edc == "Hamming":
-            edc_stream = tx.bitInsertionFraming(bits, 32, "Hamming")
+        edc_stream = tx.bitInsertionFraming(bits, 32, edc)
 
     elif framing == "Inserção de Bytes":
-        if edc == "Bit de Paridade Par":
-            edc_stream = tx.byteInsertionFraming(bits, 32, "Bit de Paridade Par")
-        elif edc == "CRC":
-            edc_stream = tx.byteInsertionFraming(bits, 32, "CRC")
-        elif edc == "Hamming":
-            edc_stream = tx.byteInsertionFraming(bits, 32, "Hamming")
+        edc_stream = tx.byteInsertionFraming(bits, 32, edc)
 
     # Unifica os frames em uma única lista de bits
     framed_stream = [bit for frame in edc_stream for bit in frame]

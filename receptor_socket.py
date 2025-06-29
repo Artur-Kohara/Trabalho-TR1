@@ -76,28 +76,13 @@ def start_receiver(gui):
 
             # 3. Desenquadramento
             if framing == "Cont. de Caracteres":
-                if edc == "Bit de Paridade Par":
-                    bitStream = rx.chCountUnframing(demod_bb, "Bit de Paridade Par")
-                elif edc == "CRC":
-                    bitStream = rx.chCountUnframing(demod_bb, "CRC")
-                elif edc == "Hamming":
-                    bitStream = rx.chCountUnframing(demod_bb, "Hamming")
+                bitStream = rx.chCountUnframing(demod_bb, edc)
 
             elif framing == "Inserção de Bits":
-                if edc == "Bit de Paridade Par":
-                    bitStream = rx.bitInsertionUnframing(demod_bb, "Bit de Paridade Par")
-                elif edc == "CRC":
-                    bitStream = rx.bitInsertionUnframing(demod_bb, "CRC")
-                elif edc == "Hamming":
-                    bitStream = rx.bitInsertionUnframing(demod_bb, "Hamming")
+                bitStream = rx.bitInsertionUnframing(demod_bb, edc)
 
             elif framing == "Inserção de Bytes":
-                if edc == "Bit de Paridade Par":
-                    bitStream = rx.byteInsertionUnframing(demod_bb, "Bit de Paridade Par")
-                elif edc == "CRC":
-                    bitStream = rx.byteInsertionUnframing(demod_bb, "CRC")
-                elif edc == "Hamming":
-                    bitStream = rx.byteInsertionUnframing(demod_bb, "Hamming")
+                bitStream = rx.byteInsertionUnframing(demod_bb, edc)
 
             else:
                 raise ValueError("Enquadramento inválido")
