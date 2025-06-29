@@ -133,8 +133,8 @@ class Transmitter:
       elif edc_type == "Hamming":
         edc_frame = self.addHamming(frame_data)
       #Verificar se a sequência de 5 bits 1 seguidos ocorre e aplicar bit 0 após a sequência
-      edc_frame = self.insertBit0(frame_data)
-      frame = flag + edc_frame + flag
+      frame_with_bit0 = self.insertBit0(edc_frame)
+      frame = flag + frame_with_bit0 + flag
       frames.append(frame)
       #Avançar para o próximo quadro
       i += frame_size

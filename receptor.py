@@ -246,7 +246,7 @@ class Receiver:
         cleaned = self.checkHamming(frame_with_edc)
 
       if cleaned is False:
-        raise ValueError("Erro de detectado. Quadro inválido.")
+        raise ValueError("Erro de detectado")
       
       # Adiciona bits limpos ao resultado
       recovered_frames.extend(cleaned)
@@ -294,7 +294,7 @@ class Receiver:
             if bitStream[i:i+8] == flag:
                 i += 8
 
-            # Aplica EDC
+            # Verifica e remove o EDC
             if edc_type == "Bit de Paridade Par":
                 cleaned = self.checkEvenParityBit(frame_with_edc)
             elif edc_type == "CRC":
@@ -303,7 +303,7 @@ class Receiver:
                 cleaned = self.checkHamming(frame_with_edc)
 
             if cleaned == False:
-                raise ValueError("Erro de EDC detectado. Quadro inválido")
+                raise ValueError("Erro de EDC detectado")
 
             # Adiciona dados limpos ao stream final
             recovered_data.extend(cleaned)
@@ -312,11 +312,12 @@ class Receiver:
 
     return recovered_data
   
-  def bitInsertionUnframing(self, bitStream):
+  def bitInsertionUnframing(self, bitStream, edc_type):
     """
-    Desenquadra os frames por inserção de bits
+    Desenquadra os frames por inserção de bits, considerando o tipo de EDC informado
     bitStream: lista de bits (inteiros)
-    return: lista de lista de bits, onde cada sublista representa um frame limpo
+    edc_type: string indicando o tipo de detecção de erro ("Bit de Paridade Par", "CRC", "Hamming")
+    return: lista de bits, onde cada sublista representa um frame limpo
     """
     flag = [0, 1, 1, 1, 1, 1, 1, 0]
     flag_len = len(flag)
@@ -334,12 +335,23 @@ class Receiver:
             while i <= n - flag_len:
                 if bitStream[i:i+flag_len] == flag:
                     end = i
-                    frame_data = bitStream[start:end]
+                    edc_frame = bitStream[start:end]
 
                     # Remove os bits 0 inseridos após cinco bits '1'
-                    cleaned_data = self.removeBit0(frame_data)
+                    cleaned_frame = self.removeBit0(edc_frame)
+
+                    # Verifica e remove o EDC
+                    if edc_type == "Bit de Paridade Par":
+                        cleaned_data = self.checkEvenParityBit(cleaned_frame)
+                    elif edc_type == "CRC":
+                        cleaned_data = self.checkCRC(cleaned_frame)
+                    elif edc_type == "Hamming":
+                        cleaned_data = self.checkHamming(cleaned_frame)
+
+                    if cleaned_data == False:
+                        raise ValueError("Erro de EDC detectado")
                     # Adiciona os dados limpos ao resultado
-                    recovered_bits.append(cleaned_data)
+                    recovered_bits.extend(cleaned_data)
 
                     i += flag_len  # Avança para buscar próximo frame
                     break
