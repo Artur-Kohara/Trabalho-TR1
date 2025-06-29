@@ -65,14 +65,14 @@ def test_chCountUnframing():
   bitStream = [bit for frame in framed_bits for bit in frame]
   resultado = rx.chCountUnframing(bitStream, "Hamming")
   assert resultado == frame_data, f"Esperado {frame_data}, mas retornou {resultado}"
-'''
+
 def test_byteInsertionUnframing():
   bits = [1, 0, 1, 0, 1, 0, 1, 0]
-  framed_bits = tx.byteInsertionFraming(bits, frame_size=8)
+  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="Bit de Paridade Par")
   bitStream = [bit for frame in framed_bits for bit in frame]
-  resultado = rx.byteInsertionUnframing(bitStream)
-  assert resultado == [bits], f"Esperado {[bits]}, mas retornou '{resultado}'"
-
+  resultado = rx.byteInsertionUnframing(bitStream, "Bit de Paridade Par")
+  assert resultado == bits, f"Esperado {bits}, mas retornou {resultado}"
+'''
 def test_bitInsertionUnframing():
   original_bits = [1, 1, 1, 1, 1, 0, 0, 0]
   framed_bits = tx.bitInsertionFraming(original_bits, frame_size=8)
@@ -150,7 +150,7 @@ def test_full_transmission_reception():
   text = "Hello"
   bits = tx.text2Binary(text)
   print(f"Bits transmitidos: {bits}")
-  framed_bits = tx.chCountFraming(bits, frame_size=8, edc_type="CRC")
+  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="Bit de Paridade Par")
   print(f"Frames transmitidos: {framed_bits}")
   bitStream = [bit for frame in framed_bits for bit in frame]
   modulated_signal = tx.polarNRZCoder(bitStream, 1)
@@ -160,7 +160,7 @@ def test_full_transmission_reception():
   print("###############################")
   demodulated_bits = rx.polarNRZDecoder(modulated_signal)
   print(f"Sinal demodulado: {demodulated_bits}")
-  unframed_bits = rx.chCountUnframing(demodulated_bits, "CRC")
+  unframed_bits = rx.byteInsertionUnframing(demodulated_bits, "Bit de Paridade Par")
   print(f"Bits desenquadrados e sem EDC: {unframed_bits}")
   received_text = rx.bits2Text(unframed_bits)
   assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
@@ -177,7 +177,7 @@ def rodar_todos_os_testes():
   test_QAM8_demodulation()
   # Desenquadramento
   test_chCountUnframing()
-  #test_byteInsertionUnframing()
+  test_byteInsertionUnframing()
   #test_bitInsertionUnframing()
   # Demodulações (banda base)
   test_polarNRZDecoder()

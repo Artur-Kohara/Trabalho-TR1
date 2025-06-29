@@ -83,8 +83,8 @@ class Transmitter:
       elif edc_type == "Hamming":
         edc_frame = self.addHamming(frame_data)
       #Verificar se a sequência de flag ocorre no quadro e aplicar byte de escape
-      edc_frame = self.insertEscapeBytes(frame_data, flag, escape)
-      frame = flag + edc_frame + flag
+      frame_with_escape = self.insertEscapeBytes(edc_frame, flag, escape)
+      frame = flag + frame_with_escape + flag
       frames.append(frame)
       #Avançar para o próximo quadro
       i += frame_size

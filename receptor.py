@@ -205,7 +205,7 @@ class Receiver:
     Desfaz o enquadramento por contagem de caracteres, considerando o tipo de EDC usado
     bitStream: lista de bits (inteiros) no formato [tamanho(8 bits) + dados + EDC] * N
     edc_type: string indicando o tipo de detecção de erro ("Bit de Paridade Par", "CRC", "Hamming")
-    return: lista de lista de bits limpos (sem EDC e sem cabeçalho), ou levanta erro se houver falha
+    return: lista de bits limpos (sem EDC e sem cabeçalho), ou levanta erro se houver falha
     """
     i = 0
     recovered_frames = []
@@ -246,7 +246,7 @@ class Receiver:
         cleaned = self.checkHamming(frame_with_edc)
 
       if cleaned is False:
-        raise ValueError("Erro de detecção de EDC. Quadro inválido.")
+        raise ValueError("Erro de detectado. Quadro inválido.")
       
       # Adiciona bits limpos ao resultado
       recovered_frames.extend(cleaned)
@@ -256,50 +256,61 @@ class Receiver:
 
     return recovered_frames
   
-  def byteInsertionUnframing(self, bitStream):
+  def byteInsertionUnframing(self, bitStream, edc_type):
     """
-    Desenquadra um trem de bits com inserção de bytes.
-    Detecta as flags, remove-as e trata escapes.
-    bitStream: lista de bits (int) com vários quadros serializados
-    return: lista de lista de bits, onde cada sublista representa um frame recuperado
+    Desenquadra um trem de bits com inserção de bytes, considerando o tipo de EDC informado
+    bitStream: lista de bits (inteiros) com vários quadros serializados
+    edc_type: string indicando o tipo de detecção de erro ("Bit de Paridade Par", "CRC", "Hamming")
+    return: lista de bits do conteúdo total limpo (sem header, flag, escape ou EDC)
     """
     flag = [0, 1, 1, 1, 1, 1, 1, 0]   # 0x7E
     escape = [0, 1, 1, 1, 1, 1, 0, 1] # 0x7D
-    recovered_bits = []
+    recovered_data = []
+
     i = 0
     n = len(bitStream)
 
-    while i <= n - 8:
-        # Verifica início da flag
+    while i <= (n - 8):
+        # Detecta flag de início
         if bitStream[i:i+8] == flag:
-            i += 8  # pula flag inicial
-            frame_data = []
+            i += 8  # pula a flag inicial
+            frame_with_edc = []
 
-            # Lê até encontrar próxima flag
-            while (i <= n - 8) and (bitStream[i:i+8] != flag):
+            # Coleta os bits até a próxima flag
+            while i <= n - 8 and bitStream[i:i+8] != flag:
+                bit = bitStream[i]
                 byte = bitStream[i:i+8]
 
-                # Verifica se encontrou escape
+                # Se o byte for um escape, seleciona o próximo byte como dado e adiciona ele no resultado
                 if byte == escape and i + 16 <= n:
-                    # Caso encontre escape, lê o próximo byte como dado e adiciona ao resultado
                     next_byte = bitStream[i+8:i+16]
-                    frame_data.extend(next_byte)
+                    frame_with_edc.extend(next_byte)
                     i += 16
                 else:
-                    # Caso não seja escape, adiciona o byte atual ao resultado
-                    frame_data.extend(byte)
-                    i += 8
+                    frame_with_edc.append(bit)
+                    i += 1
 
-            # Se encontrar uma flag final, descarta ela
+            # Pula a flag final
             if bitStream[i:i+8] == flag:
                 i += 8
 
-            # Junta os dados tratados
-            recovered_bits.append(frame_data)
-        else:
-            i += 1  # avança para tentar encontrar a próxima flag
+            # Aplica EDC
+            if edc_type == "Bit de Paridade Par":
+                cleaned = self.checkEvenParityBit(frame_with_edc)
+            elif edc_type == "CRC":
+                cleaned = self.checkCRC(frame_with_edc)
+            elif edc_type == "Hamming":
+                cleaned = self.checkHamming(frame_with_edc)
 
-    return recovered_bits
+            if cleaned == False:
+                raise ValueError("Erro de EDC detectado. Quadro inválido")
+
+            # Adiciona dados limpos ao stream final
+            recovered_data.extend(cleaned)
+        else:
+            i += 1
+
+    return recovered_data
   
   def bitInsertionUnframing(self, bitStream):
     """
