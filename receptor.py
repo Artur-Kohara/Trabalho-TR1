@@ -277,9 +277,7 @@ class Receiver:
             frame_with_edc = []
             # Acha o cabeçalho e encontra o tamanho do padding adicionado
             header = bitStream[i:i+8]
-            print(f"Header: {header}")
             padding_len = int(''.join(map(str, header)), 2)
-            print(f"Tamanho dos dados: {padding_len}")
             i += 8 # pula o header
 
             # Coleta os bits até a próxima flag
@@ -299,11 +297,8 @@ class Receiver:
             if bitStream[i:i+8] == flag:
                 i += 8
 
-            print(f"Frame sem flags e escapes: {frame_with_edc}")
-
             if padding_len != 0:
               frame_without_padding = frame_with_edc[:-padding_len]
-            print(f"Quadro sem padding: {frame_without_padding}")
 
             # Verifica e remove o EDC
             if edc_type == "Bit de Paridade Par":

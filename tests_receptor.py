@@ -177,7 +177,7 @@ def rodar_todos_os_testes():
   test_QAM8_demodulation()
   # Desenquadramento
   test_chCountUnframing()
-  #test_byteInsertionUnframing()
+  test_byteInsertionUnframing()
   test_bitInsertionUnframing()
   # Demodulações (banda base)
   test_polarNRZDecoder()

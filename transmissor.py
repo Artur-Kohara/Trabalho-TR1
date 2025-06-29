@@ -45,6 +45,11 @@ class Transmitter:
     #Loop para dividir o bitstream em quadros de tamanho frame_size
     for i in range(0, stream_size, frame_size):
         frame_data = bitStream[i: i + frame_size]  #Fatia o bitstream em quadros de tamanho frame_size
+        frame_size_bits = len(frame_data)  #Pode ser menor que frame_size no último quadro
+        print(f"Tamanho dos dados: {frame_size_bits}")
+        #Converte o tamanho do quadro (em bits) para uma lista de inteiros representando o binário
+        frame_size_binary = [int(bit) for bit in format(frame_size_bits, '08b')]  #8 bits para o tamanho (ate 11111111 = 255)
+        print(f"Header: {frame_size_binary}")
         #Aplica EDC na parte de dados do quadro
         if edc_type == "Bit de Paridade Par":
           edc_frame = self.addEvenParityBit(frame_data)
@@ -52,9 +57,6 @@ class Transmitter:
           edc_frame = self.addCRC(frame_data)
         elif edc_type == "Hamming":
           edc_frame = self.addHamming(frame_data)
-        frame_size_bits = len(frame_data)  #Pode ser menor que frame_size no último quadro
-        #Converte o tamanho do quadro (em bits) para uma lista de inteiros representando o binário
-        frame_size_binary = [int(bit) for bit in format(frame_size_bits, '08b')]  #8 bits para o tamanho (ate 11111111 = 255)
         frame = frame_size_binary + edc_frame  #Concatenando a contagem de tamanho com os dados binários
         frames.append(frame) 
 
