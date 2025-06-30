@@ -1,3 +1,4 @@
+# receiver_socket.py
 import socket
 import pickle
 import numpy as np
@@ -9,80 +10,84 @@ PORT = 5000
 rx = Receiver({})
 
 # Atualiza a interface GTK de forma thread-safe
-def update_interface(gui, demod_bb, demod_bp, text, config):
-  ax1 = gui.figure_rx_bb.gca()
-  rx.plotBaseband(demod_bb, config["mod_bb"], ax=ax1)
-  gui.canvas_rx_bb.draw()
+def update_interface(gui, demod_bb, demod_bp, text):
+    ax1 = gui.figure_rx_bb.gca()
+    ax1.clear()
+    ax1.plot(demod_bb)
+    ax1.set_title("Demodulação Banda Base")
+    gui.canvas_rx_bb.draw()
 
-  ax2 = gui.figure_rx_bp.gca()
-  rx.plotPassband(demod_bp, config["mod_bp"], ax=ax2)
-  gui.canvas_rx_bp.draw()
+    ax2 = gui.figure_rx_bp.gca()
+    ax2.clear()
+    ax2.plot(demod_bp)
+    ax2.set_title("Demodulação Portadora")
+    gui.canvas_rx_bp.draw()
 
-  gui.label_rx_text.set_text(text)
-  return False
+    gui.label_rx_text.set_text(text)
+    return False
 
 def start_receiver(gui):
-  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((HOST, PORT))
-    s.listen(1)
-    print("[Receptor] Aguardando conexão...")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        s.listen(1)
+        print("[Receptor] Aguardando conexão...")
 
-    conn, addr = s.accept()
-    with conn:
-      print(f"[Receptor] Conectado a {addr}")
-      data = b""
-      while True:
-        packet = conn.recv(4096)
-        if not packet:
-          break
-        data += packet
+        conn, addr = s.accept()
+        with conn:
+            print(f"[Receptor] Conectado a {addr}")
+            data = b""
+            while True:
+                packet = conn.recv(4096)
+                if not packet:
+                    break
+                data += packet
 
-        packet = pickle.loads(data)
-        signal_bb = packet['signal_bb']
-        signal_bp = packet['signal_bp']
-        config = packet['config']
+            packet = pickle.loads(data)
+            signal_bb = packet['signal_bb']
+            signal_bp = packet['signal_bp']
+            config = packet['config']
 
-        mod_bp = config.get("mod_bp")
-        mod_bb = config.get("mod_bb")
-        framing = config.get("framing")
-        edc = config.get("edc")
+            mod_bp = config.get("mod_bp")
+            mod_bb = config.get("mod_bb")
+            framing = config.get("framing")
+            edc = config.get("edc")
 
-        print(f"[Receptor] Config: {config}")
+            print(f"[Receptor] Config: {config}")
 
-        # 1. Demodulação de portadora
-        if mod_bp == "ASK":
-          demod_bp = rx.demoduleASK(signal_bp, 100, 0.1)
-        elif mod_bp == "FSK":
-          demod_bp = rx.demoduleFSK(signal_bp, 4, 2, 1, 100)
-        elif mod_bp == "8-QAM":
-          demod_bp = rx.demodule8QAM(signal_bp, 1, 2, 100)
-        else:
-          raise ValueError("Modulação de portadora inválida")
+            # 1. Demodulação de portadora
+            if mod_bp == "ASK":
+                demod_bp = rx.demoduleASK(signal_bp, 100, 0.1)
+            elif mod_bp == "FSK":
+                demod_bp = rx.demoduleFSK(signal_bp, 4, 2, 1, 100)
+            elif mod_bp == "8-QAM":
+                demod_bp = rx.demodule8QAM(signal_bp, 1, 2, 100)
+            else:
+                raise ValueError("Modulação de portadora inválida")
 
-        # 2. Demodulação de banda base
-        if mod_bb == "NRZ":
-          demod_bb = rx.polarNRZDecoder(signal_bb)
-        elif mod_bb == "Manchester":
-          demod_bb = rx.manchesterDecoder(signal_bb)
-        elif mod_bb == "Bipolar":
-          demod_bb = rx.bipolarDecoder(signal_bb)
-        else:
-          raise ValueError("Modulação de banda base inválida")
+            # 2. Demodulação de banda base
+            if mod_bb == "NRZ":
+                demod_bb = rx.polarNRZDecoder(signal_bb)
+            elif mod_bb == "Manchester":
+                demod_bb = rx.manchesterDecoder(signal_bb)
+            elif mod_bb == "Bipolar":
+                demod_bb = rx.bipolarDecoder(signal_bb)
+            else:
+                raise ValueError("Modulação de banda base inválida")
 
-        # 3. Desenquadramento
-        if framing == "Cont. de Caracteres":
-          bitStream = rx.chCountUnframing(demod_bb, edc)
+            # 3. Desenquadramento
+            if framing == "Cont. de Caracteres":
+                bitStream = rx.chCountUnframing(demod_bb, edc)
 
-        elif framing == "Inserção de Bits":
-          bitStream = rx.bitInsertionUnframing(demod_bb, edc)
+            elif framing == "Inserção de Bits":
+                bitStream = rx.bitInsertionUnframing(demod_bb, edc)
 
-        elif framing == "Inserção de Bytes":
-          bitStream = rx.byteInsertionUnframing(demod_bb, edc)
+            elif framing == "Inserção de Bytes":
+                bitStream = rx.byteInsertionUnframing(demod_bb, edc)
 
-        else:
-          raise ValueError("Enquadramento inválido")
+            else:
+                raise ValueError("Enquadramento inválido")
 
-        text = rx.receive(bitStream)
+            text = rx.receive(bitStream)
 
-        # Atualizar interface
-        GLib.idle_add(update_interface, gui, demod_bb, demod_bp, text, config)
+            # Atualizar interface
+            GLib.idle_add(update_interface, gui, demod_bb, demod_bp, text)
