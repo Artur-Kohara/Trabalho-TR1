@@ -1,9 +1,12 @@
 # Arquivo onde será desenvolvido o receptor do sistema de comunicação
 import numpy as np
+import matplotlib.pyplot as plt
+from transmissor import Transmitter
 
 class Receiver:
   def __init__(self, config):
-    self.config = config
+    self.transmitter = Transmitter(config)
+    self.config = self.transmitter.config
 
   def receive(self, bits):
     text = self.bits2Text(bits)
@@ -26,7 +29,7 @@ class Receiver:
     signal: array de float, contendo o signal modulado ASK
     bit_samples: número de amostras por bit
     treshold: limiar de decisão da presença de onda
-    return: string com os bits demodulados
+    return: lista de bits
     """
     bits = []
 
@@ -38,11 +41,11 @@ class Receiver:
       energy = np.mean(np.square(segment))
 
       if energy > treshold:
-        bits.append("1")
+        bits.append(1)
       else:
-        bits.append("0")
+        bits.append(0)
 
-    return ''.join(bits)
+    return bits
 
   def demoduleFSK(self, signal, f0, f1, A=1, bit_samples=100):
     """
@@ -53,7 +56,7 @@ class Receiver:
     f1: frequência associada ao bit 1
     A: amplitude da portadora (mesmo usado na modulação)
     bit_samples: número de amostras por bit (padrão: 100)
-    return: string de bits decodificados
+    return: lista de bits
     """
     bits = []
     # Vetor de tempo normalizado de 0 até (quase) 1, com bit_samples amostras
@@ -79,10 +82,10 @@ class Receiver:
 
       # Compara a semelhança do sinal com cada referência.
       # O bit é 1 se o sinal se parece mais com f1; senão, é 0.
-      bit = "1" if abs(cor_1) > abs(cor_0) else "0"
+      bit = 1 if abs(cor_1) > abs(cor_0) else 0
       bits.append(bit)
 
-    return ''.join(bits)
+    return bits
   
   def demodule8QAM(self, signal, A=1, f=1000, symbol_samples=100):
     """
@@ -91,7 +94,7 @@ class Receiver:
     A: amplitude usada na modulação
     f: frequência da portadora
     symbol_samples: número de amostras por símbolo (padrão: 100)
-    return: string com os bits demodulados
+    return: lista de bits
     """
     bits = []
     # Vetor de tempo normalizado no intervalo [0, 1) com symbol_samples amostras
@@ -138,7 +141,7 @@ class Receiver:
 
       bits.extend(bits_tuple)
 
-    return ''.join(str(b) for b in bits)
+    return bits
   
 ################################################################################
 # Demodulação (banda base)
@@ -149,127 +152,224 @@ class Receiver:
     Decodifica um sinal modulado polar NRZ
     signal: lista de amplitudes do sinal modulado
     V: amplitude do sinal (padrão = 1)
-    return: string com o trem de bits decodificado
+    return: lista de bits
     """
     bits = []
     for amplitude in signal:
       if amplitude >= V:
-        bits.append('1')
+        bits.append(1)
       elif amplitude <= -V:
-        bits.append('0')
+        bits.append(0)
   
-    return ''.join(bits)
+    return bits
   
   def manchesterDecoder(self, signal):
     """
     Decodifica um sinal modulado Manchester
     signal: lista de amplitudes do sinal modulado
-    return: string com o trem de bits decodificado
+    return: lista de bits
     """
     bits = []
     # Itera sobre os índices do sinal, de 2 em 2, porque cada bit codificado ocupa dois valores no sinal
     for i in range(0, len(signal), 2):
       # Se a primeira metade está alta (1) e a segunda está baixa (0), representa um bit 1
       if (signal[i] == 1) and (signal[i + 1] == 0):
-        bits.append('1')
+        bits.append(1)
       #Se a primeira metade está baixa (0) e a segunda está alta (1), representa um bit 0
       elif (signal[i] == 0) and (signal[i + 1] == 1):
-        bits.append('0')
+        bits.append(0)
   
-    return ''.join(bits)
+    return bits
   
   def bipolarDecoder(self, signal):
     """
     Decodifica um sinal bipolar AMI
     signal: lista de amplitudes (valores como 0, +1 ou -1)
     V: valor da amplitude (padrão: 1)
-    return: string de bits decodificados
+    return: lista de bits
     """
     bits = []
 
     for i in range(0, len(signal)):
       bit = signal[i]
       if bit == 0:
-        bits.append("0")
+        bits.append(0)
       else:
-        bits.append("1")
+        bits.append(1)
 
-    return ''.join(bits)
+    return bits
 
 ################################################################################
 # Desenquadramentos
 ################################################################################
 
-  def chCountUnframing(self, frames):
+  def chCountUnframing(self, bitStream, edc_type):
     """
-    Desenquadra os frames por contagem de caracteres
-    Recebe uma lista de frames, onde cada frame é uma lista de bits
-    Retorna o trem de bits desenquadrado
+    Desfaz o enquadramento por contagem de caracteres, considerando o tipo de EDC usado
+    bitStream: lista de bits (inteiros) no formato [tamanho(8 bits) + dados + EDC] * N
+    edc_type: string indicando o tipo de detecção de erro ("Bit de Paridade Par", "CRC", "Hamming")
+    return: lista de bits limpos (sem EDC e sem cabeçalho), ou levanta erro se houver falha
     """
-    bitStream = []
-    for frame in frames:
-      # Seleciona os 6 primeiros bits do quadro, converte para string e depois para inteiro
-      # Esses 6 bits representam o tamanho do frame
-      frame_size = int(''.join(map(str, frame[:8])), 2)
-      # Seleciona os próximos bits do quadro, que são os dados reais
-      data_bits = frame[8:8 + frame_size]
-      # Adiciona os bits de dados (data_bits) na lista bitStream
-      bitStream.extend(data_bits)
-    # Converte a lista de bits para uma string de bits
-    return ''.join(map(str, bitStream))
-  
-  def byteInsertionUnframing(self, frames):
-    """
-    Desenquadra os frames por inserção de bytes
-    frames: lista de frames, onde cada frame é uma lista de bits
-    return: string com o trem de bits desenquadrado
-    """
-    bitStream = []
-    flag = [0, 1, 1, 1, 1, 1, 1, 0]
-    escape = [0, 1, 1, 1, 1, 1, 0, 1]
-    for frame in frames:
-      # Verifica se o quadro começa e termina com a flag
-      if frame[:8] == flag and frame[-8:] == flag:
-        # Remove a flag do início e do fim do quadro
-        data_bits = frame[8:-8]
-        i = 0
-        # Percorre os bits do quadro para verificar a presença de escape
-        while i < len(data_bits):
-          byte = data_bits[i:i + 8]
-          # Verifica se o byte é um byte de escape
-          if byte == escape and i + 8 < len(data_bits):
-            next_byte = data_bits[i + 8:i + 16]
-            # Adiciona o próximo byte normal
-            bitStream.extend(next_byte)
-            i += 16
-          else:
-            # Adiciona o byte normal ao bitStream
-            bitStream.extend(byte)
-            i += 8
-    # Converte a lista de bits para uma string de bits
-    return ''.join(map(str, bitStream))
-  
-  def bitInsertionUnframing(self, frames):
-    """
-    Desenquadra os frames por inserção de bits
-    frames: lista de frames, onde cada frame é uma lista de bits
-    return: string com o trem de bits desenquadrado
-    """
-    bitStream = []
-    flag = [0, 1, 1, 1, 1, 1, 1, 0]
-    
-    for frame in frames:
-      # Verifica se o quadro começa e termina com a flag
-      if frame[:8] == flag and frame[-8:] == flag:
-        # Remove a flag do início e do fim do quadro
-        data_bits = frame[8:-8]
+    i = 0
+    recovered_frames = []
 
-        # Remove os bits 0 inseridos após cinco bits 1
-        cleaned_data = self.removeBit0(data_bits)
-        bitStream.extend(cleaned_data)
+    while i < len(bitStream):
+      if i + 8 > len(bitStream):
+        break  # Não há bits suficientes para o cabeçalho
 
-    # Converte a lista de bits para uma string de bits
-    return ''.join(map(str, bitStream))
+      # Cabeçalho com tamanho original dos dados (sem EDC)
+      size_bits = bitStream[i:i+8]
+      frame_size = int(''.join(map(str, size_bits)), 2)
+
+      # Determina o tamanho do frame com EDC
+      edc_extra = 0
+      if edc_type == "Bit de Paridade Par":
+        edc_extra = 1
+      elif edc_type == "CRC":
+        edc_extra = 7
+      elif edc_type == "Hamming":
+        # Para Hamming, o tamanho final depende da quantidade de bits de paridade inseridos
+        # m + p bits totais, onde m = frame_size e p é tal que 2^p >= m + p + 1
+        m = frame_size
+        p = 0
+        while (2 ** p) < (m + p + 1):
+            p += 1
+        edc_extra = p
+
+      start = i + 8
+      end = start + frame_size + edc_extra
+      frame_with_edc = bitStream[start:end]
+
+      # Verifica e remove o EDC
+      if edc_type == "Bit de Paridade Par":
+        cleaned = self.checkEvenParityBit(frame_with_edc)
+      elif edc_type == "CRC":
+        cleaned = self.checkCRC(frame_with_edc)
+      elif edc_type == "Hamming":
+        cleaned = self.checkHamming(frame_with_edc)
+
+      if cleaned is False:
+        raise ValueError("Erro de detectado")
+      
+      # Adiciona bits limpos ao resultado
+      recovered_frames.extend(cleaned)
+
+      # Avança para o próximo quadro
+      i = end
+
+    return recovered_frames
+  
+  def byteInsertionUnframing(self, bitStream, edc_type):
+    """
+    Desenquadra um trem de bits com inserção de bytes, considerando o tipo de EDC informado
+    bitStream: lista de bits (inteiros) com vários quadros serializados
+    edc_type: string indicando o tipo de detecção de erro ("Bit de Paridade Par", "CRC", "Hamming")
+    return: lista de bits do conteúdo total limpo (sem header, flag, escape ou EDC)
+    """
+    flag = [0, 1, 1, 1, 1, 1, 1, 0]   # 0x7E
+    escape = [0, 1, 1, 1, 1, 1, 0, 1] # 0x7D
+    recovered_data = []
+
+    i = 0
+    n = len(bitStream)
+
+    while i <= (n - 8):
+        # Detecta flag de início
+        if bitStream[i:i+8] == flag:
+            i += 8  # pula a flag inicial
+            frame_with_edc = []
+            # Acha o cabeçalho e encontra o tamanho do padding adicionado
+            header = bitStream[i:i+8]
+            padding_len = int(''.join(map(str, header)), 2)
+            i += 8 # pula o header
+
+            # Coleta os bits até a próxima flag
+            while i <= n - 8 and bitStream[i:i+8] != flag:
+                byte = bitStream[i:i+8]
+
+                # Se o byte for um escape, seleciona o próximo byte como dado e adiciona ele no resultado
+                if byte == escape and i + 16 <= n:
+                    next_byte = bitStream[i+8:i+16]
+                    frame_with_edc.extend(next_byte)
+                    i += 16
+                else:
+                    frame_with_edc.extend(byte)
+                    i += 8
+
+            # Pula a flag final
+            if bitStream[i:i+8] == flag:
+                i += 8
+
+            if padding_len != 0:
+              frame_without_padding = frame_with_edc[:-padding_len]
+
+            # Verifica e remove o EDC
+            if edc_type == "Bit de Paridade Par":
+                cleaned = self.checkEvenParityBit(frame_without_padding)
+            elif edc_type == "CRC":
+                cleaned = self.checkCRC(frame_without_padding)
+            elif edc_type == "Hamming":
+                cleaned = self.checkHamming(frame_without_padding)
+
+            if cleaned == False:
+                raise ValueError("Erro de EDC detectado")
+
+            # Adiciona dados limpos ao stream final
+            recovered_data.extend(cleaned)
+        else:
+            i += 1
+
+    return recovered_data
+  
+  def bitInsertionUnframing(self, bitStream, edc_type):
+    """
+    Desenquadra os frames por inserção de bits, considerando o tipo de EDC informado
+    bitStream: lista de bits (inteiros)
+    edc_type: string indicando o tipo de detecção de erro ("Bit de Paridade Par", "CRC", "Hamming")
+    return: lista de bits, onde cada sublista representa um frame limpo
+    """
+    flag = [0, 1, 1, 1, 1, 1, 1, 0]
+    flag_len = len(flag)
+    n = len(bitStream)
+    i = 0
+    recovered_bits = []
+    # Percorre o bitStream garantindo que não ultrapasse o tamanho do stream
+    while i <= n - flag_len:
+        # Verifica se encontrou uma flag de início
+        if bitStream[i:i+flag_len] == flag:
+            start = i + flag_len
+            i = start
+
+            # Procura a próxima flag para determinar o final do frame
+            while i <= n - flag_len:
+                if bitStream[i:i+flag_len] == flag:
+                    end = i
+                    edc_frame = bitStream[start:end]
+
+                    # Remove os bits 0 inseridos após cinco bits '1'
+                    cleaned_frame = self.removeBit0(edc_frame)
+
+                    # Verifica e remove o EDC
+                    if edc_type == "Bit de Paridade Par":
+                        cleaned_data = self.checkEvenParityBit(cleaned_frame)
+                    elif edc_type == "CRC":
+                        cleaned_data = self.checkCRC(cleaned_frame)
+                    elif edc_type == "Hamming":
+                        cleaned_data = self.checkHamming(cleaned_frame)
+
+                    if cleaned_data == False:
+                        raise ValueError("Erro de EDC detectado")
+                    # Adiciona os dados limpos ao resultado
+                    recovered_bits.extend(cleaned_data)
+
+                    i += flag_len  # Avança para buscar próximo frame
+                    break
+                else:
+                    i += 1
+        else:
+            i += 1
+
+    return recovered_bits
   
   # Função auxiliar que remove o bit 0 inserido após cinco bits 1 seguidos
   def removeBit0(self, frame_data):
@@ -302,7 +402,7 @@ class Receiver:
     '''
     Verifica se a soma dos bits 1 é par. Ao adicionar o bit de paridade, a soma é par se não houver erro
     bitstream: Lista de bits com o bit de paridade no final
-    return: True se a paridade estiver correta, False se a paridade estiver incorreta
+    return: lista de bits sem o bit de paridade se a paridade estiver correta, False se a paridade estiver incorreta
     '''
     # Pega o último bit da lista (bit de paridade)
     parity_bit = bitStream[-1]
@@ -313,7 +413,9 @@ class Receiver:
 
     # Compara se o bit de paridade enviado bate com a paridade do trem de bits
     if parity == parity_bit:
-      return True
+      # Remove o último bit (bit de paridade)
+      original_bits = bitStream[:-1]
+      return original_bits
     else:
       return False
   
@@ -321,23 +423,26 @@ class Receiver:
     '''
     Verifica se o bitStream tem o CRC correto
     bitStream: Lista de bits com o CRC no final
-    return: True se o CRC estiver correto, False se o CRC estiver incorreto
+    return: Lista de bits originais sem o CRC se estiver correto, False se o CRC estiver incorreto
     '''
     gen_poly = [1,0,0,0, 0,1,1,1]
+    # Cópia do bitStream
+    dividend = bitStream.copy()
     degree = len(gen_poly) - 1 #Grau do polinômio
 
-    for i in range((len(bitStream)) - degree):
+    for i in range((len(dividend)) - degree):
       #Se o bit atual for 1, faz XOR com cada bit do polinômio gerador
-      if bitStream[i] == 1:
+      if dividend[i] == 1:
         for j in range (len(gen_poly)): 
-          bitStream[i+j] = bitStream[i+j] ^ gen_poly[j]
+          dividend[i+j] = dividend[i+j] ^ gen_poly[j]
 
     #Os últimos 7 bits (grau) do dividendo são o resto da divisão
-    remainder = bitStream[-degree:]
+    remainder = dividend[-degree:]
 
     # Se o resto for igual a zero, o CRC está correto
     if remainder == [0] * degree:
-      return True
+      # Retorna os bits originais sem o CRC
+      return bitStream[:-degree]
     else:
       return False
 
@@ -345,7 +450,7 @@ class Receiver:
     """
     Verifica e corrige um erro de 1 bit usando código de Hamming
     bitStream: lista de bits codificada com Hamming (incluindo paridade)
-    return: (string de bits corrigidos sem bits de paridade, posição do erro ou 0 se não houve erro)
+    return: lista de bits corrigidos sem bits de paridade
     """
     n = len(bitStream)
     # Armazeno o número de bits de paridade
@@ -387,9 +492,7 @@ class Receiver:
       if not self._is_power_of_two(i):
         corrected_bitStream.append(bitStream[i-1])
 
-    # Converte a lista de bits corrigidos para string
-    corrected_bitStream = ''.join(map(str, corrected_bitStream))
-    return corrected_bitStream, error_pos
+    return corrected_bitStream
 
   # Função auxiliar que verifica se um número é uma potência de dois
   def _is_power_of_two(self, x):
@@ -398,3 +501,72 @@ class Receiver:
     # Sempre que se faz "and" entre um número que é potência de dois e seu antecessor, o resultado é 0
     # Exemplo: 4 (100) & 3 (011) = 0
     return x != 0 and (x & (x - 1)) == 0
+  
+################################################################################
+# Plotagem de gráficos
+################################################################################
+
+  def plotBaseband(self, bitStream, modulation_type, V=None, ax=None):
+      V = self.config.get('V', 1.0) if V is None else V
+
+      if modulation_type.lower() == 'nrz':
+          signal = self.transmitter.polarNRZCoder(bitStream, V)
+          time_scale = np.arange(len(signal))
+      elif modulation_type.lower() == 'manchester':
+          signal = self.transmitter.manchesterCoder(bitStream)
+          time_scale = np.arange(0, len(bitStream), 0.5)
+      elif modulation_type.lower() == 'bipolar':
+          signal = self.transmitter.bipolarCoder(bitStream, V)
+          time_scale = np.arange(len(signal))
+      else:
+          raise ValueError("Tipo de modulação inválido")
+
+      if ax is None:
+          fig, ax = plt.subplots(figsize=(12, 4))
+
+      ax.clear()
+      ax.step(time_scale, signal, where='post', linewidth=2)
+
+      if modulation_type.lower() == 'manchester':
+          for i in range(len(bitStream)):
+              ax.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)
+
+      ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+      ax.set_xlabel("Tempo (unidades de bit)")
+      ax.set_ylabel("Amplitude")
+      ax.grid(True)
+
+      if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
+          ax.set_ylim(-V * 1.2, V * 1.2)
+      elif modulation_type.lower() == 'manchester':
+          ax.set_ylim(-0.2, 1.2)
+
+  def plotPassband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None, ax=None):
+      A = self.config.get('A', 1.0) if A is None else A
+      f = self.config.get('f', 1000) if f is None else f
+      f1 = self.config.get('f1', 1000) if f1 is None else f1
+      f2 = self.config.get('f2', 2000) if f2 is None else f2
+
+      if modulation_type.lower() == 'ask':
+          signal = self.transmitter.ASK(bitStream, A, f)
+          samples_per_bit = 100
+      elif modulation_type.lower() == 'fsk':
+          signal = self.transmitter.FSK(bitStream, A, f1, f2)
+          samples_per_bit = 100
+      elif modulation_type.lower() == '8-qam':
+          signal = self.transmitter.QAM8(bitStream, A, f)
+          samples_per_bit = 33
+      else:
+          raise ValueError("Tipo de modulação inválido")
+
+      t = np.arange(len(signal)) / samples_per_bit
+
+      if ax is None:
+          fig, ax = plt.subplots(figsize=(12, 4))
+
+      ax.clear()
+      ax.plot(t, signal, linewidth=1.5)
+      ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+      ax.set_xlabel("Tempo (em unidades de bit)")
+      ax.set_ylabel("Amplitude")
+      ax.grid(True, linestyle='--', alpha=0.7)

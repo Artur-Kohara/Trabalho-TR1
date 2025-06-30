@@ -27,10 +27,7 @@ def test_demodule_ask():
   # Demodula o sinal
   demodulated_bits = rx.demoduleASK(modulated_signal)
 
-  # Converte os bits originais para string para comparar
-  original_bits_str = ''.join(str(b) for b in original_bits)
-
-  assert demodulated_bits == original_bits_str, "Erro na demodulação ASK"
+  assert demodulated_bits == original_bits, "Erro na demodulação ASK"
 
 def test_demodule_fsk():
   original_bits = [1, 0, 1, 1, 0, 0, 1]
@@ -42,9 +39,7 @@ def test_demodule_fsk():
   modulated_signal = tx.FSK(original_bits, A, f1, f0)
   # Demodula o sinal
   demodulated_bits = rx.demoduleFSK(modulated_signal, f0, f1, A, bit_samples)
-  # Converte os bits originais para string para comparar
-  original_bits_str = ''.join(str(b) for b in original_bits)
-  assert demodulated_bits == original_bits_str, "Erro na demodulação FSK"
+  assert demodulated_bits == original_bits, "Erro na demodulação FSK"
 
 def test_QAM8_demodulation():
   # Bits de teste: escolha uma sequência conhecida ou aleatória
@@ -58,13 +53,7 @@ def test_QAM8_demodulation():
   # Demodulação
   demodulated_bits_str = rx.demodule8QAM(modulated_signal, A=amplitude, f=frequency)
 
-  # Converte original para string para comparação
-  padded_bits = original_bits.copy()
-  while len(padded_bits) % 3 != 0:
-    padded_bits.append(0)
-  expected_bits_str = ''.join(str(b) for b in padded_bits)
-
-  assert demodulated_bits_str == expected_bits_str, "Erro na demodulação 8-QAM"
+  assert demodulated_bits_str == original_bits, "Erro na demodulação 8-QAM"
 
 ################################################################################
 # Desenquadramento
@@ -72,22 +61,24 @@ def test_QAM8_demodulation():
 
 def test_chCountUnframing():
   frame_data = [1, 0, 1, 0, 1, 0, 1, 0]  # 8 bits
-  frame = tx.chCountFraming(frame_data, frame_size=8)[0]
-  resultado = rx.chCountUnframing([frame])
-  assert resultado == "10101010", f"Esperado '10101010', mas retornou '{resultado}'"
+  framed_bits = tx.chCountFraming(frame_data, frame_size=8, edc_type="Hamming")
+  bitStream = [bit for frame in framed_bits for bit in frame]
+  resultado = rx.chCountUnframing(bitStream, "Hamming")
+  assert resultado == frame_data, f"Esperado {frame_data}, mas retornou {resultado}"
 
 def test_byteInsertionUnframing():
-  byte = [1, 0, 1, 0, 1, 0, 1, 0]
-  frame = tx.byteInsertionFraming(byte, frame_size=8)[0]
-  resultado = rx.byteInsertionUnframing([frame])
-  assert resultado == "10101010", f"Esperado '10101010', mas retornou '{resultado}'"
+  bits = [1, 0, 1, 0, 1, 0, 1, 0]
+  framed_bits = tx.byteInsertionFraming(bits, frame_size=8, edc_type="CRC")
+  bitStream = [bit for frame in framed_bits for bit in frame]
+  resultado = rx.byteInsertionUnframing(bitStream, "CRC")
+  assert resultado == bits, f"Esperado {bits}, mas retornou {resultado}"
 
 def test_bitInsertionUnframing():
-  # bits com sequencia "111110" (inserido 0 após cinco 1s)
   original_bits = [1, 1, 1, 1, 1, 0, 0, 0]
-  frame = tx.bitInsertionFraming(original_bits, frame_size=8)[0]
-  desenquadrado = rx.bitInsertionUnframing([frame])
-  assert desenquadrado == "11111000", f"Esperado '11111000', mas retornou '{desenquadrado}'"
+  framed_bits = tx.bitInsertionFraming(original_bits, frame_size=8, edc_type="Bit de Paridade Par")
+  bitStream = [bit for frame in framed_bits for bit in frame]
+  desenquadrado = rx.bitInsertionUnframing(bitStream, "Bit de Paridade Par")
+  assert desenquadrado == original_bits, f"Esperado {original_bits}, mas retornou {desenquadrado}"
 
 ################################################################################
 # Demodulação (banda base)
@@ -98,23 +89,20 @@ def test_polarNRZDecoder():
   V = 1
   sinal_modulado = tx.polarNRZCoder(bits, V)
   sinal_demodulado = rx.polarNRZDecoder(sinal_modulado, V)
-  esperado = "101010"
-  assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
+  assert sinal_demodulado == bits, f"Esperado {bits}, mas retornou {sinal_demodulado}"
 
 def test_manchesterDecoder():
   bits = [1, 0, 1, 0, 1, 0]
   sinal_modulado = tx.manchesterCoder(bits)
   sinal_demodulado = rx.manchesterDecoder(sinal_modulado)
-  esperado = "101010"
-  assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
+  assert sinal_demodulado == bits, f"Esperado {bits}, mas retornou {sinal_demodulado}"
 
 def test_bipolarDecoder():
   bits = [1, 0, 1, 0, 1, 0, 1, 1]
   V = 1
   sinal_modulado = tx.bipolarCoder(bits, V)
   sinal_demodulado = rx.bipolarDecoder(sinal_modulado)
-  esperado = "10101011"
-  assert sinal_demodulado == esperado, f"Esperado {esperado}, mas retornou {sinal_demodulado}"
+  assert sinal_demodulado == bits, f"Esperado {bits}, mas retornou {sinal_demodulado}"
 
 ################################################################################
 # Detecção de erros
@@ -125,7 +113,7 @@ def test_checkEvenParity():
   bits_pareados = tx.addEvenParityBit(bits)
   # esperado = [1, 0, 1, 0, 1, 1, 0]
   check_parity = rx.checkEvenParityBit(bits_pareados)
-  assert check_parity == True, f"Esperado {True}, mas retornou {check_parity}"
+  assert check_parity == bits, f"Esperado {bits}, mas retornou {check_parity}"
 
   wrong_paired_bits = [1, 0, 1, 0, 1, 0]
   check_parity = rx.checkEvenParityBit(wrong_paired_bits)
@@ -135,7 +123,7 @@ def test_checkCRC():
   bits = [1,1,0,0, 1,0,1,0, 0,1,1,0]
   bits_CRC = tx.addCRC(bits)
   result = rx.checkCRC(bits_CRC)
-  assert result == True, f"Esperado {True}, mas retornou {result}"
+  assert result == bits, f"Esperado {bits}, mas retornou {result}"
 
   wrong_CRC_bits = [1, 0, 1, 0, 0,1,1,1,1,1,1]
   result = rx.checkCRC(wrong_CRC_bits)
@@ -145,13 +133,38 @@ def test_checkHamming():
   bits = [1, 0, 1, 0, 1, 1]
   bits_hamming = tx.addHamming(bits)
   result = rx.checkHamming(bits_hamming)
-  esperado = ("101011", 0)
+  esperado = [1,0,1,0,1,1]
   assert result == esperado, f"Esperado {esperado}, mas retornou {result}"
 
   bits_hamming_wrong = [0,1,1,0,0,0,1,1,0,0,1]
   result = rx.checkHamming(bits_hamming_wrong)
-  esperado = ("1101001", 5)
+  esperado = [1,1,0,1,0,0,1]
   assert result == esperado, f"Esperado {esperado}, mas retornou {result}"
+
+################################################################################
+# Fluxo completo de transmissão e recepção
+################################################################################
+
+def test_full_transmission_reception():
+  # Transmissão
+  text = "A"
+  bits = tx.text2Binary(text)
+  print(f"Bits transmitidos: {bits}")
+  framed_bits = tx.chCountFraming(bits, frame_size=8, edc_type="Bit de Paridade Par")
+  print(f"Frames transmitidos: {framed_bits}")
+  bitStream = [bit for frame in framed_bits for bit in frame]
+  modulated_signal = tx.ASK(bitStream, 1, 2)
+  print(f"Sinal transmitido: {modulated_signal}")
+
+  # Recepção
+  print("###############################")
+  demodulated_bits = rx.demoduleASK(modulated_signal, 100, 0.1)
+  print(f"Sinal demodulado: {demodulated_bits}")
+  unframed_bits = rx.chCountUnframing(demodulated_bits, "Bit de Paridade Par")
+  print(f"Bits desenquadrados e sem EDC: {unframed_bits}")
+  received_text = rx.bits2Text(unframed_bits)
+  print(f"Texto recebido: {received_text}")
+  assert received_text == text, f"Esperado {text}, mas retornou {received_text}"
 
 ################################################################################
 # Roda todos os testes
@@ -175,6 +188,8 @@ def rodar_todos_os_testes():
   test_checkEvenParity()
   test_checkCRC()
   test_checkHamming()
+  # Fluxo completo de transmissão e recepção
+  test_full_transmission_reception()
   print("Todos os testes passaram com sucesso.")
 
 if __name__ == "__main__":
