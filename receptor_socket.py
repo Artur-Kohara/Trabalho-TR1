@@ -10,17 +10,13 @@ PORT = 5000
 rx = Receiver({})
 
 # Atualiza a interface GTK de forma thread-safe
-def update_interface(gui, demod_bb, demod_bp, text):
+def update_interface(gui, demod_bb, demod_bp, text, config):
     ax1 = gui.figure_rx_bb.gca()
-    ax1.clear()
-    ax1.plot(demod_bb)
-    ax1.set_title("Demodulação Banda Base")
+    rx.plotBaseband(demod_bb, config["mod_bb"], ax=ax1)
     gui.canvas_rx_bb.draw()
 
     ax2 = gui.figure_rx_bp.gca()
-    ax2.clear()
-    ax2.plot(demod_bp)
-    ax2.set_title("Demodulação Portadora")
+    rx.plotPassband(demod_bp, config["mod_bp"], ax=ax2)
     gui.canvas_rx_bp.draw()
 
     gui.label_rx_text.set_text(text)
@@ -90,4 +86,4 @@ def start_receiver(gui):
             text = rx.receive(bitStream)
 
             # Atualizar interface
-            GLib.idle_add(update_interface, gui, demod_bb, demod_bp, text)
+            GLib.idle_add(update_interface, gui, demod_bb, demod_bp, text, config)
