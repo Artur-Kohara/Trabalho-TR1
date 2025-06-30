@@ -163,15 +163,15 @@ class InterfaceGUI(Gtk.Window):
 
     # Modulação BP
     if config["mod_bp"] == "ASK":
-        mod_bp = tx.ASK(bits_framed, A=1, f=1000)
+        mod_bp = tx.ASK(bits_framed, A=1, f=2)
     elif config["mod_bp"] == "FSK":
-        mod_bp = tx.FSK(bits_framed, A=1, f1=1000, f2=2000)
+        mod_bp = tx.FSK(bits_framed, A=1, f1=2, f2=4)
     elif config["mod_bp"] == "8-QAM":
-        mod_bp = tx.QAM8(bits_framed, A=1, f=1000)
+        mod_bp = tx.QAM8(bits_framed, A=1, f=2)
 
     # Plot BP
     ax2 = self.figure_bp.gca()
-    tx.plotPassband(bits_framed, config["mod_bp"], A=1, f=1000, f1=1000, f2=2000, ax=ax2)
+    tx.plotPassband(bits_framed, config["mod_bp"], A=1, f=2, f1=2, f2=4, ax=ax2)
     self.canvas_bp.draw()
 
     # Envia via socket
