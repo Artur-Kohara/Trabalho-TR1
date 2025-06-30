@@ -76,13 +76,13 @@ def start_receiver(gui):
 
             # 3. Desenquadramento
             if framing == "Cont. de Caracteres":
-                bitStream = rx.chCountUnframing(demod_bp, edc)
+                bitStream = rx.chCountUnframing(demod_bb, edc)
 
             elif framing == "Inserção de Bits":
-                bitStream = rx.bitInsertionUnframing(demod_bp, edc)
+                bitStream = rx.bitInsertionUnframing(demod_bb, edc)
 
             elif framing == "Inserção de Bytes":
-                bitStream = rx.byteInsertionUnframing(demod_bp, edc)
+                bitStream = rx.byteInsertionUnframing(demod_bb, edc)
 
             else:
                 raise ValueError("Enquadramento inválido")
