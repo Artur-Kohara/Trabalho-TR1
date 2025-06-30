@@ -1,5 +1,6 @@
 # Arquivo onde será desenvolvido o receptor do sistema de comunicação
 import numpy as np
+import matplotlib.pyplot as plt
 
 class Receiver:
   def __init__(self, config):
@@ -498,3 +499,7 @@ class Receiver:
     # Sempre que se faz "and" entre um número que é potência de dois e seu antecessor, o resultado é 0
     # Exemplo: 4 (100) & 3 (011) = 0
     return x != 0 and (x & (x - 1)) == 0
+  
+################################################################################
+# Plotagem de gráficos
+################################################################################
