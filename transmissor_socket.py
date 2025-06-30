@@ -10,8 +10,8 @@ def socketTrasmission(config_transmissao):
     text = config_transmissao['text']
     framing = config_transmissao['framing']
     edc = config_transmissao['edc']
-    mod_bb = config_transmissao['modulacao_bb']
-    mod_bp = config_transmissao['modulacao_bp']
+    mod_bb = config_transmissao['mod_bb']
+    mod_bp = config_transmissao['mod_bp']
 
     tx = Transmitter({})
 
@@ -48,8 +48,6 @@ def socketTrasmission(config_transmissao):
         modulated_signal = tx.FSK(framed_stream, A=1, f1=2, f2=4)
     elif mod_bp == "8-QAM":
         modulated_signal = tx.QAM8(framed_stream, A=1, f=2)
-    else:
-        modulated_signal = signal_bb
 
     # Dados a serem enviados
     package = {
@@ -59,8 +57,8 @@ def socketTrasmission(config_transmissao):
         'config': {
             'framing': framing,
             'edc': edc,
-            'modulacao_bb': mod_bb,
-            'modulacao_bp': mod_bp
+            'mod_bb': mod_bb,
+            'mod_bp': mod_bp
         }
     }
 

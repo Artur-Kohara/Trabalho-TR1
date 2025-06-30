@@ -58,7 +58,7 @@ def start_receiver(gui):
             if mod_bp == "ASK":
                 demod_bp = rx.demoduleASK(signal_bp, 100, 0.1)
             elif mod_bp == "FSK":
-                demod_bp = rx.demoduleFSK(signal_bp, f0=4, f1=2)
+                demod_bp = rx.demoduleFSK(signal_bp, 4, 2, 1, 100)
             elif mod_bp == "8-QAM":
                 demod_bp = rx.demodule8QAM(signal_bp, 1, 2, 100)
             else:
@@ -76,13 +76,13 @@ def start_receiver(gui):
 
             # 3. Desenquadramento
             if framing == "Cont. de Caracteres":
-                bitStream = rx.chCountUnframing(demod_bb, edc)
+                bitStream = rx.chCountUnframing(demod_bp, edc)
 
             elif framing == "Inserção de Bits":
-                bitStream = rx.bitInsertionUnframing(demod_bb, edc)
+                bitStream = rx.bitInsertionUnframing(demod_bp, edc)
 
             elif framing == "Inserção de Bytes":
-                bitStream = rx.byteInsertionUnframing(demod_bb, edc)
+                bitStream = rx.byteInsertionUnframing(demod_bp, edc)
 
             else:
                 raise ValueError("Enquadramento inválido")
