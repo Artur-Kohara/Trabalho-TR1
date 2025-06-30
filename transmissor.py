@@ -9,24 +9,25 @@ class Transmitter:
   def __init__(self, config=None):
     # Configuração padrão otimizada
     self.default_config = {
-        'V': 1.0,          #Amplitude para modulações de banda base (float)
-        'A': 1.0,          #Amplitude para modulações de banda passante (float)
-        'f': 2.0,          #Frequência base (float)
-        'f1': 2.0,         #Frequência para bit 1 (FSK) (float)
-        'f2': 4.0,         #Frequência para bit 0 (FSK) (float)
-        'frame_size': 32,  #Tamanho do quadro em bits (int)
+        'V': 1.0,                             #Amplitude para modulações de banda base (float)
+        'A': 1.0,                             #Amplitude para modulações de banda passante (float)
+        'f': 2.0,                             #Frequência base (float)
+        'f1': 2.0,                            #Frequência para bit 1 (FSK) (float)
+        'f2': 4.0,                            #Frequência para bit 0 (FSK) (float)
+        'frame_size': 32,                     #Tamanho do quadro em bits (int) #OBS: aceita frame_size de até 255 bits
+        'edc_type': 'Bit de Paridade Par',    #Tipo do edc (string)
     }
     
-    # Mescla configurações
+    #Mescla config do usuário com os valores padrão, priorizando os do usuário
     self.config = {**self.default_config, **(config or {})}
     
   #Método que recebe uma string e retorna o trem de bits equivalente
   def text2Binary(self, text):
     bitStream = []
     for c in text:
-      unicodeValue = ord(c)  # Valor Unicode de cada caractere
-      binary = format(unicodeValue, '08b')  # Converte para byte binário
-      # Converte cada caractere binário para inteiro e adiciona à lista
+      unicodeValue = ord(c)  #Valor Unicode de cada caractere
+      binary = format(unicodeValue, '08b')  #Converte para byte binário
+      #Converte cada caractere binário para inteiro e adiciona à lista
       bitStream.extend([int(bit) for bit in binary])  
     return bitStream
   
@@ -38,32 +39,42 @@ class Transmitter:
   #Enquadramento por contagem de caracteres
   #Recebe um trem de bits (lista de inteiros), e o tamanho do quadro 
   #Retorna uma lista de quadros, onde cada quadro é uma lista de inteiros
-  def chCountFraming(self, bitStream, frame_size, edc_type):
+  def chCountFraming(self, bitStream, frame_size=None, edc_type=None):
+    #Busca valores padrão na config, caso não passe nenhum argumento
+    frame_size = self.config.get('frame_size') if frame_size is None else frame_size
+    edc_type = self.config.get('edc_type') if edc_type is None else edc_type
+
     frames = [] 
     stream_size = len(bitStream)  
 
     #Loop para dividir o bitstream em quadros de tamanho frame_size
     for i in range(0, stream_size, frame_size):
-        frame_data = bitStream[i: i + frame_size]  #Fatia o bitstream em quadros de tamanho frame_size
-        frame_size_bits = len(frame_data)  #Pode ser menor que frame_size no último quadro
-        #Converte o tamanho do quadro (em bits) para uma lista de inteiros representando o binário
-        frame_size_binary = [int(bit) for bit in format(frame_size_bits, '08b')]  #8 bits para o tamanho (ate 11111111 = 255)
-        #Aplica EDC na parte de dados do quadro
-        if edc_type == "Bit de Paridade Par":
-          edc_frame = self.addEvenParityBit(frame_data)
-        elif edc_type == "CRC":
-          edc_frame = self.addCRC(frame_data)
-        elif edc_type == "Hamming":
-          edc_frame = self.addHamming(frame_data)
-        frame = frame_size_binary + edc_frame  #Concatenando a contagem de tamanho com os dados binários
-        frames.append(frame) 
+      frame_data = bitStream[i: i + frame_size]  #Fatia o bitstream em quadros de tamanho frame_size
+      frame_size_bits = len(frame_data)  #Pode ser menor que frame_size no último quadro
+      #Converte o tamanho do quadro (em bits) para uma lista de inteiros representando o binário
+      frame_size_binary = [int(bit) for bit in format(frame_size_bits, '08b')]  #8 bits para o tamanho (ate 11111111 = 255)
+
+      #Aplica EDC na parte de dados do quadro
+      if edc_type == "Bit de Paridade Par":
+        edc_frame = self.addEvenParityBit(frame_data)
+      elif edc_type == "CRC":
+        edc_frame = self.addCRC(frame_data)
+      elif edc_type == "Hamming":
+        edc_frame = self.addHamming(frame_data)
+
+      frame = frame_size_binary + edc_frame  #Concatenando a contagem de tamanho com os dados binários
+      frames.append(frame) 
 
     return frames
 
   #Enquadramento com flags e inserção de bytes
   #Recebe um trem de bits (lista de inteiros), e o tamanho inicial do quadro (vai aumentar com inserção de flags e possivelmente de escape)
   #Retorna uma lista de quadros, onde cada quadro é uma lista de inteiros
-  def byteInsertionFraming(self, bitStream, frame_size, edc_type):
+  def byteInsertionFraming(self, bitStream, frame_size=None, edc_type=None):
+    #Busca valores padrão na config, caso não passe nenhum argumento
+    frame_size = self.config.get('frame_size') if frame_size is None else frame_size
+    edc_type = self.config.get('edc_type') if edc_type is None else edc_type
+
     frames = []
     flag = [0,1,1,1,1,1,1,0] #0x7E
     escape = [0,1,1,1,1,1,0,1] #0x7D
@@ -75,6 +86,7 @@ class Transmitter:
     while i < stream_size:
       #Fatia o bitstream em quadros de tamanho inicial frame_size
       frame_data = bitStream[i:i + frame_size]
+
       #Aplica EDC na parte de dados do quadro
       if edc_type == "Bit de Paridade Par":
         edc_frame = self.addEvenParityBit(frame_data)
@@ -87,7 +99,7 @@ class Transmitter:
       pad_len = (8 - len(edc_frame) % 8) % 8
       #Calcula um header (8 bits) indicando o tamanho do padding
       header = [int(b) for b in format(pad_len, '08b')]
-      edc_frame += [0] * pad_len  # Padding com 0s
+      edc_frame += [0] * pad_len  #Padding com 0s
 
       #Verificar se a sequência de flag ocorre no quadro e aplicar byte de escape
       frame_with_escape = self.insertEscapeBytes(edc_frame, flag, escape)
@@ -109,8 +121,8 @@ class Transmitter:
 
     #Processa os bits de byte em byte
     while i < frame_size_bits:
-      #Pega o próximo byte (n precisa estar completo)
-      byte = frame_data[i:i+8] if i+8 <= frame_size_bits else frame_data[i:]
+      #Pega o próximo byte 
+      byte = frame_data[i:i+8] if i+8 <= frame_size_bits else frame_data[i:] #Mesmo sendo múltiplo de 8, adiciona failsafe
       #Verifica se byte == flag ou escape, so pega bytes completos 
       if len(byte) == 8 and (byte == flag or byte == escape):
         inserted_data.extend(escape) #Adiciona escape antes do byte
@@ -122,7 +134,11 @@ class Transmitter:
   #Enquadramento com flags e inserção de bits
   #Recebe um trem de bits (lista de inteiros), e o tamanho inicial do quadro (vai aumentar com inserção de flags e possivelmente de bits)
   #Retorna uma lista de quadros, onde cada quadro é uma lista de inteiros
-  def bitInsertionFraming (self, bitStream, frame_size, edc_type):
+  def bitInsertionFraming (self, bitStream, frame_size=None, edc_type=None):
+    #Busca valores padrão na config, caso não passe nenhum argumento
+    frame_size = self.config.get('frame_size') if frame_size is None else frame_size
+    edc_type = self.config.get('edc_type') if edc_type is None else edc_type
+
     frames = []
     flag = [0,1,1,1,1,1,1,0] #0x7E
 
@@ -133,6 +149,7 @@ class Transmitter:
     while i < stream_size:
       #Fatia o bitstream em quadros de tamanho inicial frame_size
       frame_data = bitStream[i:i + frame_size]
+
       #Aplica EDC na parte de dados do quadro
       if edc_type == "Bit de Paridade Par":
         edc_frame = self.addEvenParityBit(frame_data)
@@ -140,7 +157,8 @@ class Transmitter:
         edc_frame = self.addCRC(frame_data)
       elif edc_type == "Hamming":
         edc_frame = self.addHamming(frame_data)
-      #Verificar se a sequência de 5 bits 1 seguidos ocorre e aplicar bit 0 após a sequência
+
+      #Verificar se a sequência de 5 bits '1' seguidos ocorre e aplicar bit 0 após a sequência
       frame_with_bit0 = self.insertBit0(edc_frame)
       frame = flag + frame_with_bit0 + flag
       frames.append(frame)
@@ -181,9 +199,11 @@ class Transmitter:
   #Modulação NRZ Polar: bit = 1 -> sinal em +V e bit = 0 -> sinal em -V
   #Recebe um trem de bits (lista de bits) e a amplitude do sinal (V), por padrão = 1
   #Retorna lista de amplitudes do sinal modulado
-  def polarNRZCoder(self, bitStream, V):
-    modulated_signal = []
+  def polarNRZCoder(self, bitStream, V=None):
+    #Busca valor de config caso não passe nenhum argumento
+    V = self.config.get('V') if V is None else V
 
+    modulated_signal = []
     for bit in bitStream:
       modulated_signal.append(V if bit == 1 else -V)
 
@@ -206,13 +226,16 @@ class Transmitter:
   #Modulação Bipolar(AMI): 0 é representado por 0 e 1 alterna entre V e -V
   #Recebe um trem de bits (lista de bits)
   #Retorna lista de amplitudes do sinal modulado
-  def bipolarCoder(self,bitStream,V):
+  def bipolarCoder(self,bitStream,V=None):
+    #Busca valor de config caso não passe nenhum argumento
+    V = self.config.get('V') if V is None else V
+
     modulated_signal = []
     last_polarity = -V  #Começa invertido para que o primeiro 1 seja +V
 
     for bit in bitStream:
       if bit == 0:
-        modulated_signal.append(0)  #0 é representado por [0, 0]
+        modulated_signal.append(0) 
       else:
         #Alterna a polaridade para cada 1
         last_polarity = V if last_polarity == -V else -V
@@ -228,7 +251,11 @@ class Transmitter:
   #Modulação por chaveamento de amplitude: se bit = 1 -> seno com amplitude A. Senão -> amplitude 0
   #Recebe o trem de bits (lista de bits), a Amplitude do seno e a frequência
   #Retorna o sinal modulado pelo chaveamento de amplitude
-  def ASK(self, bitStream, A, f):
+  def ASK(self, bitStream, A=None, f=None):
+    #Busca valores de config caso não passe nenhum argumento
+    A = self.config.get('A') if A is None else A
+    f = self.config.get('f') if f is None else f
+
     sig_size = len(bitStream)
     signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por bit
 
@@ -247,7 +274,12 @@ class Transmitter:
   #Modulação por chaveamento de frequência: se bit = 1 -> portadora com frequência f1. Senão portadora com frequência f2
   #Recebe o trem de bits (lista de bits), a Amplitude do seno e as 2 frequências
   #Retorna o sinal modulado pelo chaveamento de frequência
-  def FSK(self, bitStream, A, f1,f2):
+  def FSK(self, bitStream, A=None, f1=None,f2=None):
+    #Busca valores de config caso não passe nenhum argumento
+    A = self.config.get('A') if A is None else A
+    f1 = self.config.get('f1') if f1 is None else f1
+    f2 = self.config.get('f2') if f2 is None else f2
+    
     sig_size = len(bitStream)
     signal = np.zeros(sig_size * 100, dtype = float) #Cria sinal nulo com 100 amostras por bit
 
@@ -266,7 +298,11 @@ class Transmitter:
   #Modulação por quadratura e amplitude 8QAM: segue uma contelação em que cada ponto corresponde a 3 bits
   #Recebe o trem de bits (lista de bits), a Amplitude e frequência do seno
   #Retorna o sinal modulado pelo chaveamento de quadratura e amplitude
-  def QAM8(self,bitStream,A,f):
+  def QAM8(self,bitStream,A=None,f=None):
+    #Busca valores de config caso não passe nenhum argumento
+    A = self.config.get('A') if A is None else A
+    f = self.config.get('f') if f is None else f
+
     # Adiciona zeros ao final caso não seja múltiplo de 3
     while len(bitStream) % 3 != 0:
       bitStream.append(0)
@@ -378,10 +414,11 @@ class Transmitter:
   #Plota sinais de modulação digital em banda base.
   #Recebe trem de bits(lista de inteiros), tipo de modulação (string) e valor de tensão V(float)
   def plotBaseband(self, bitStream, modulation_type, V=None, ax=None):
-    if V is None:
-      V = self.config.get('V', 1)
 
-    # Gera o sinal modulado
+    #Busca valor de config caso não passe nenhum argumento
+    V = self.config.get('V') if V is None else V
+
+    #Gera o sinal modulado
     if modulation_type.lower() == 'nrz':
       signal = self.polarNRZCoder(bitStream, V)
       time_scale = np.arange(len(signal))
@@ -394,7 +431,7 @@ class Transmitter:
     else:
       raise ValueError("Tipo de modulação inválido")
 
-    # Cria novo plot se nenhum eixo foi passado
+    #Cria novo plot se nenhum eixo foi passado
     if ax is None:
       fig, ax = plt.subplots(figsize=(12, 4))
 
@@ -423,10 +460,12 @@ class Transmitter:
   #Plota sinais de modulação digital em banda passante
   #Recebe trem de bits (lista de inteiros), tipo de modulação (string), Amplitude, frequência, frequência 1 e 2(FSK), em que todos são floats
   def plotPassband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None, ax=None):
-    A = A or self.config.get('A', 1)
-    f = f or self.config.get('f', 1000)
-    f1 = f1 or self.config.get('f1', 1000)
-    f2 = f2 or self.config.get('f2', 2000)
+    
+    #Busca valores de config caso não passe nenhum argumento
+    A = self.config.get('A') if A is None else A
+    f = self.config.get('f') if f is None else f
+    f1 = self.config.get('f1') if f1 is None else f1
+    f2 = self.config.get('f2') if f2 is None else f2
 
     if modulation_type.lower() == 'ask':
       signal = self.ASK(bitStream, A, f)
@@ -436,6 +475,7 @@ class Transmitter:
       samples_per_bit = 100
     elif modulation_type == '8-QAM':
       signal = self.QAM8(bitStream, A, f)
+      #3 bits por símbolo, então menos amostras por bit
       samples_per_bit = 33
     else:
       raise ValueError("Tipo de modulação inválido. Use 'ask', 'fsk' ou '8-QAM'")
