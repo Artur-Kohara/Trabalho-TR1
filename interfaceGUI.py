@@ -13,15 +13,24 @@ import pickle
 class InterfaceGUI(Gtk.Window):
   def __init__(self):
     Gtk.Window.__init__(self, title="Sistema de Comunicação - Camada Física e Enlace")
-    self.set_default_size(1200, 800)
-    self.set_border_width(15)
+    self.set_default_size(1200, 800)  # Tamanho inicial da janela
+    self.set_border_width(10)
     
     # Cores e estilos
     self.set_style()
     
-    # Layout principal
+    # Adiciona um ScrolledWindow como container principal
+    scrolled_window = Gtk.ScrolledWindow()
+    scrolled_window.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+    self.add(scrolled_window)
+    
+    # Container principal dentro do ScrolledWindow
     main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
-    self.add(main_box)
+    main_box.set_margin_top(10)
+    main_box.set_margin_bottom(10)
+    main_box.set_margin_start(10)
+    main_box.set_margin_end(10)
+    scrolled_window.add(main_box)
     
     # Cabeçalho
     self.create_header(main_box)
@@ -47,6 +56,8 @@ class InterfaceGUI(Gtk.Window):
     # Botões
     btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     btn_box.set_halign(Gtk.Align.CENTER)
+    btn_box.set_margin_top(10)
+    btn_box.set_margin_bottom(10)
     main_box.pack_start(btn_box, False, False, 10)
     
     self.btn_transmit = Gtk.Button.new_with_label("Transmitir Mensagem")
@@ -67,128 +78,162 @@ class InterfaceGUI(Gtk.Window):
     style_provider = Gtk.CssProvider()
     css = b"""
     .header {
-      background-color: #5d6d7e;
-      color: white;
-      border-radius: 5px;
-      padding: 10px;
+        background-color: #5d6d7e;
+        color: white;
+        border-radius: 5px;
+        padding: 10px;
     }
     .section-title {
-      font-weight: bold;
-      font-size: 14pt;
-      margin-bottom: 8px;
+        font-weight: bold;
+        font-size: 14pt;
+        margin-bottom: 8px;
     }
     .option-frame {
-      border-radius: 5px;
-      padding: 10px;
+        border-radius: 5px;
+        padding: 10px;
     }
     .graph-container {
-      background-color: #f5f5f5;
-      border: 1px solid #d3d3d3;
-      border-radius: 5px;
-      padding: 5px;
+        background-color: #f5f5f5;
+        border: 1px solid #d3d3d3;
+        border-radius: 5px;
+        padding: 5px;
     }
     .received-text {
-      background-color: #f0f0f0;
-      padding: 15px;
-      font-family: monospace;
-      border-radius: 5px;
+        background-color: #f0f0f0;
+        padding: 15px;
+        font-family: monospace;
+        border-radius: 5px;
     }
     .suggested-action {
-      background-color: #2ecc71;
-      color: white;
+        background-color: #2ecc71;
+        color: white;
     }
     .destructive-action {
-      background-color: #e74c3c;
-      color: white;
+        background-color: #e74c3c;
+        color: white;
+    }
+    .param-entry {
+        margin-bottom: 5px;
+    }
+    .param-label {
+        font-size: 10pt;
+        margin-right: 5px;
     }
     """
     style_provider.load_from_data(css)
     Gtk.StyleContext.add_provider_for_screen(
-      Gdk.Screen.get_default(),
-      style_provider,
-      Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        Gdk.Screen.get_default(),
+        style_provider,
+        Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
     )
 
   def transmit_message(self, widget):
+    # Obter valores dos parâmetros
+    try:
+      V = float(self.entry_V.get_text())
+      A = float(self.entry_A.get_text())
+      f = float(self.entry_f.get_text())
+      f1 = float(self.entry_f1.get_text())
+      f2 = float(self.entry_f2.get_text())
+      frame_size = int(self.entry_frame_size.get_text())
+    except ValueError:
+      dialog = Gtk.MessageDialog(
+        transient_for=self,
+        flags=0,
+        message_type=Gtk.MessageType.ERROR,
+        buttons=Gtk.ButtonsType.OK,
+        text="Erro nos parâmetros",
+      )
+      dialog.format_secondary_text("Por favor, insira valores numéricos válidos para todos os parâmetros.")
+      dialog.run()
+      dialog.destroy()
+      return
+
     config = {
-        "mod_bp": next((k for k, v in self.bp_opts.items() if v.get_active())),
-        "mod_bb": next((k for k, v in self.bb_opts.items() if v.get_active())),
-        "framing": next((k for k, v in self.framing_opts.items() if v.get_active())),
-        "edc": next((k for k, v in self.edc_opts.items() if v.get_active()))
+      "mod_bp": next((k for k, v in self.bp_opts.items() if v.get_active())),
+      "mod_bb": next((k for k, v in self.bb_opts.items() if v.get_active())),
+      "framing": next((k for k, v in self.framing_opts.items() if v.get_active())),
+      "edc": next((k for k, v in self.edc_opts.items() if v.get_active())),
+      "V": V,
+      "A": A,
+      "f": f,
+      "f1": f1,
+      "f2": f2,
+      "frame_size": frame_size
     }
 
     text = self.entry_text.get_text()
-    tx = Transmitter({})
+    if not text:
+      dialog = Gtk.MessageDialog(
+        transient_for=self,
+        flags=0,
+        message_type=Gtk.MessageType.WARNING,
+        buttons=Gtk.ButtonsType.OK,
+        text="Mensagem vazia",
+      )
+      dialog.format_secondary_text("Por favor, digite uma mensagem para transmitir.")
+      dialog.run()
+      dialog.destroy()
+      return
+
+    tx = Transmitter(config)
     bits = tx.text2Binary(text)
 
     # Enquadramento
     if config["framing"] == "Cont. de Caracteres":
-        if config["edc"] == "Bit de Paridade Par":
-           frames = tx.chCountFraming(bits, 32, "Bit de Paridade Par")
-        elif config["edc"] == "CRC":
-           frames = tx.chCountFraming(bits, 32, "CRC")
-        elif config["edc"] == "Hamming":
-           frames = tx.chCountFraming(bits, 32, "Hamming")
-
+      frames = tx.chCountFraming(bits, config["frame_size"], config["edc"])
     elif config["framing"] == "Inserção de Bits":
-        if config["edc"] == "Bit de Paridade Par":
-           frames = tx.bitInsertionFraming(bits, 32, "Bit de Paridade Par")
-        elif config["edc"] == "CRC":
-           frames = tx.bitInsertionFraming(bits, 32, "CRC")
-        elif config["edc"] == "Hamming":
-           frames = tx.bitInsertionFraming(bits, 32, "Hamming")
-
+      frames = tx.bitInsertionFraming(bits, config["frame_size"], config["edc"])
     elif config["framing"] == "Inserção de Bytes":
-        if config["edc"] == "Bit de Paridade Par":
-           frames = tx.byteInsertionFraming(bits, 32, "Bit de Paridade Par")
-        elif config["edc"] == "CRC":
-           frames = tx.byteInsertionFraming(bits, 32, "CRC")
-        elif config["edc"] == "Hamming":
-           frames = tx.byteInsertionFraming(bits, 32, "Hamming")
+      frames = tx.byteInsertionFraming(bits, config["frame_size"], config["edc"])
 
     bits_framed = [bit for frame in frames for bit in frame]
 
     # Modulação BB
     if config["mod_bb"] == "NRZ":
-        mod_bb = tx.polarNRZCoder(bits_framed, 1)
+      mod_bb = tx.polarNRZCoder(bits_framed, config["V"])
     elif config["mod_bb"] == "Manchester":
-        mod_bb = tx.manchesterCoder(bits_framed)
+      mod_bb = tx.manchesterCoder(bits_framed)
     elif config["mod_bb"] == "Bipolar":
-        mod_bb = tx.bipolarCoder(bits_framed, 1)
+      mod_bb = tx.bipolarCoder(bits_framed, config["V"])
 
     # Plot BB
     ax1 = self.figure_bb.gca()
+    ax1.clear()
     tx.plotBaseband(bits_framed, config["mod_bb"], ax=ax1)
     self.canvas_bb.draw()
 
     # Modulação BP
     if config["mod_bp"] == "ASK":
-        mod_bp = tx.ASK(bits_framed, A=1, f=2)
+      mod_bp = tx.ASK(bits_framed, A=config["A"], f=config["f"])
     elif config["mod_bp"] == "FSK":
-        mod_bp = tx.FSK(bits_framed, A=1, f1=2, f2=4)
+      mod_bp = tx.FSK(bits_framed, A=config["A"], f1=config["f1"], f2=config["f2"])
     elif config["mod_bp"] == "8-QAM":
-        mod_bp = tx.QAM8(bits_framed, A=1, f=2)
+      mod_bp = tx.QAM8(bits_framed, A=config["A"], f=config["f"])
 
     # Plot BP
     ax2 = self.figure_bp.gca()
-    tx.plotPassband(bits_framed, config["mod_bp"], A=1, f=2, f1=2, f2=4, ax=ax2)
+    ax2.clear()
+    tx.plotPassband(bits_framed, config["mod_bp"], 
+                    A=config["A"], f=config["f"], 
+                    f1=config["f1"], f2=config["f2"], ax=ax2)
     self.canvas_bp.draw()
 
     # Envia via socket
     payload = {
-        "signal_bp": mod_bp,
-        "signal_bb": mod_bb,
-        "config": config
+      "signal_bp": mod_bp,
+      "signal_bb": mod_bb,
+      "config": config
     }
 
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(('127.0.0.1', 5000))
-            s.sendall(pickle.dumps(payload))
-            print("[Tx] Mensagem enviada com sucesso.")
+      with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect(('127.0.0.1', 5000))
+        s.sendall(pickle.dumps(payload))
+        print("[Tx] Mensagem enviada com sucesso.")
     except Exception as e:
-        print(f"[Tx] Erro ao enviar: {e}")
-  
+      print(f"[Tx] Erro ao enviar: {e}")
+
   def create_header(self, parent):
     header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
     header_box.get_style_context().add_class("header")
@@ -241,6 +286,70 @@ class InterfaceGUI(Gtk.Window):
       hbox_edc.pack_start(btn, False, False, 0)
       self.edc_opts[label] = btn
     options_box.pack_start(frame_edc, True, True, 0)
+    
+    # Frame Parâmetros
+    frame_params = Gtk.Frame(label=" Parâmetros ")
+    frame_params.get_style_context().add_class("option-frame")
+    params_grid = Gtk.Grid()
+    params_grid.set_column_spacing(10)
+    params_grid.set_row_spacing(5)
+    frame_params.add(params_grid)
+    
+    # Amplitude BB (V)
+    label_V = Gtk.Label(label="Amplitude BB (V):")
+    label_V.get_style_context().add_class("param-label")
+    self.entry_V = Gtk.Entry()
+    self.entry_V.set_text("1.0")
+    self.entry_V.get_style_context().add_class("param-entry")
+    params_grid.attach(label_V, 0, 0, 1, 1)
+    params_grid.attach(self.entry_V, 1, 0, 1, 1)
+    
+    # Amplitude BP (A)
+    label_A = Gtk.Label(label="Amplitude BP (A):")
+    label_A.get_style_context().add_class("param-label")
+    self.entry_A = Gtk.Entry()
+    self.entry_A.set_text("1.0")
+    self.entry_A.get_style_context().add_class("param-entry")
+    params_grid.attach(label_A, 0, 1, 1, 1)
+    params_grid.attach(self.entry_A, 1, 1, 1, 1)
+    
+    # Frequência base (f)
+    label_f = Gtk.Label(label="Frequência base (f):")
+    label_f.get_style_context().add_class("param-label")
+    self.entry_f = Gtk.Entry()
+    self.entry_f.set_text("2.0")
+    self.entry_f.get_style_context().add_class("param-entry")
+    params_grid.attach(label_f, 0, 2, 1, 1)
+    params_grid.attach(self.entry_f, 1, 2, 1, 1)
+    
+    # Frequência f1 (FSK)
+    label_f1 = Gtk.Label(label="Frequência f1 (FSK):")
+    label_f1.get_style_context().add_class("param-label")
+    self.entry_f1 = Gtk.Entry()
+    self.entry_f1.set_text("2.0")
+    self.entry_f1.get_style_context().add_class("param-entry")
+    params_grid.attach(label_f1, 0, 3, 1, 1)
+    params_grid.attach(self.entry_f1, 1, 3, 1, 1)
+    
+    # Frequência f2 (FSK)
+    label_f2 = Gtk.Label(label="Frequência f2 (FSK):")
+    label_f2.get_style_context().add_class("param-label")
+    self.entry_f2 = Gtk.Entry()
+    self.entry_f2.set_text("4.0")
+    self.entry_f2.get_style_context().add_class("param-entry")
+    params_grid.attach(label_f2, 0, 4, 1, 1)
+    params_grid.attach(self.entry_f2, 1, 4, 1, 1)
+    
+    # Tamanho do quadro
+    label_frame_size = Gtk.Label(label="Tamanho do quadro:")
+    label_frame_size.get_style_context().add_class("param-label")
+    self.entry_frame_size = Gtk.Entry()
+    self.entry_frame_size.set_text("32")
+    self.entry_frame_size.get_style_context().add_class("param-entry")
+    params_grid.attach(label_frame_size, 0, 5, 1, 1)
+    params_grid.attach(self.entry_frame_size, 1, 5, 1, 1)
+    
+    options_box.pack_start(frame_params, True, True, 0)
   
   def create_transmitter(self, parent):
     tx_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
@@ -273,7 +382,7 @@ class InterfaceGUI(Gtk.Window):
     graph_box.set_shadow_type(Gtk.ShadowType.IN)
     self.figure_bb = Figure(figsize=(5, 2), dpi=100)
     self.canvas_bb = FigureCanvas(self.figure_bb)
-    self.canvas_bb.set_size_request(500, 150)
+    self.canvas_bb.set_size_request(500, 170)
     graph_box.add(self.canvas_bb)
     vbox_bb.pack_start(graph_box, True, True, 5)
     
@@ -300,7 +409,7 @@ class InterfaceGUI(Gtk.Window):
     graph_box.set_shadow_type(Gtk.ShadowType.IN)
     self.figure_bp = Figure(figsize=(5, 2), dpi=100)
     self.canvas_bp = FigureCanvas(self.figure_bp)
-    self.canvas_bp.set_size_request(500, 150)
+    self.canvas_bp.set_size_request(500, 170)
     graph_box.add(self.canvas_bp)
     vbox_bp.pack_start(graph_box, True, True, 5)
     
@@ -328,7 +437,7 @@ class InterfaceGUI(Gtk.Window):
     graph_box.set_shadow_type(Gtk.ShadowType.IN)
     self.figure_rx_bb = Figure(figsize=(5, 2), dpi=100)
     self.canvas_rx_bb = FigureCanvas(self.figure_rx_bb)
-    self.canvas_rx_bb.set_size_request(500, 150)
+    self.canvas_rx_bb.set_size_request(500, 190)
     graph_box.add(self.canvas_rx_bb)
     rx_bb_box.pack_start(graph_box, True, True, 5)
     
@@ -346,7 +455,7 @@ class InterfaceGUI(Gtk.Window):
     graph_box.set_shadow_type(Gtk.ShadowType.IN)
     self.figure_rx_bp = Figure(figsize=(5, 2), dpi=100)
     self.canvas_rx_bp = FigureCanvas(self.figure_rx_bp)
-    self.canvas_rx_bp.set_size_request(500, 150)
+    self.canvas_rx_bp.set_size_request(500, 190)
     graph_box.add(self.canvas_rx_bp)
     rx_bp_box.pack_start(graph_box, True, True, 5)
     
@@ -372,3 +481,6 @@ def main():
   win.connect("destroy", Gtk.main_quit)
   win.show_all()
   Gtk.main()
+
+if __name__ == "__main__":
+  main()
