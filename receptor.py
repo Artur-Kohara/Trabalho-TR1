@@ -507,66 +507,68 @@ class Receiver:
 ################################################################################
 
   def plotBaseband(self, bitStream, modulation_type, V=None, ax=None):
-      V = self.config.get('V', 1.0) if V is None else V
+    V = self.config.get('V', 1.0) if V is None else V
 
-      if modulation_type.lower() == 'nrz':
-          signal = self.transmitter.polarNRZCoder(bitStream, V)
-          time_scale = np.arange(len(signal))
-      elif modulation_type.lower() == 'manchester':
-          signal = self.transmitter.manchesterCoder(bitStream)
-          time_scale = np.arange(0, len(bitStream), 0.5)
-      elif modulation_type.lower() == 'bipolar':
-          signal = self.transmitter.bipolarCoder(bitStream, V)
-          time_scale = np.arange(len(signal))
-      else:
-          raise ValueError("Tipo de modulação inválido")
+    if modulation_type.lower() == 'nrz':
+      signal = self.transmitter.polarNRZCoder(bitStream, V)
+      time_scale = np.arange(len(signal))
+    elif modulation_type.lower() == 'manchester':
+      signal = self.transmitter.manchesterCoder(bitStream)
+      time_scale = np.arange(0, len(bitStream), 0.5)
+    elif modulation_type.lower() == 'bipolar':
+      signal = self.transmitter.bipolarCoder(bitStream, V)
+      time_scale = np.arange(len(signal))
+    else:
+      raise ValueError("Tipo de modulação inválido")
 
-      if ax is None:
-          fig, ax = plt.subplots(figsize=(12, 4))
+    if ax is None:
+      fig, ax = plt.subplots(figsize=(12, 4))
 
-      ax.clear()
-      ax.step(time_scale, signal, where='post', linewidth=2)
+    ax.clear()
+    ax.step(time_scale, signal, where='post', linewidth=2)
 
-      if modulation_type.lower() == 'manchester':
-          for i in range(len(bitStream)):
-              ax.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)
+    if modulation_type.lower() == 'manchester':
+      for i in range(len(bitStream)):
+        ax.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)
 
-      ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
-      ax.set_xlabel("Tempo (unidades de bit)")
-      ax.set_ylabel("Amplitude")
-      ax.grid(True)
+    ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    ax.set_xlabel("Tempo (unidades de bit)")
+    ax.set_ylabel("Amplitude")
+    ax.grid(True)
 
-      if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
-          ax.set_ylim(-V * 1.2, V * 1.2)
-      elif modulation_type.lower() == 'manchester':
-          ax.set_ylim(-0.2, 1.2)
+    if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
+      ax.set_ylim(-V * 1.2, V * 1.2)
+    elif modulation_type.lower() == 'manchester':
+      ax.set_ylim(-0.2, 1.2)
 
   def plotPassband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None, ax=None):
-      A = self.config.get('A', 1.0) if A is None else A
-      f = self.config.get('f', 1000) if f is None else f
-      f1 = self.config.get('f1', 1000) if f1 is None else f1
-      f2 = self.config.get('f2', 2000) if f2 is None else f2
+    A = self.config.get('A', 1.0) if A is None else A
+    f = self.config.get('f', 1000) if f is None else f
+    f1 = self.config.get('f1', 1000) if f1 is None else f1
+    f2 = self.config.get('f2', 2000) if f2 is None else f2
 
-      if modulation_type.lower() == 'ask':
-          signal = self.transmitter.ASK(bitStream, A, f)
-          samples_per_bit = 100
-      elif modulation_type.lower() == 'fsk':
-          signal = self.transmitter.FSK(bitStream, A, f1, f2)
-          samples_per_bit = 100
-      elif modulation_type.lower() == '8-qam':
-          signal = self.transmitter.QAM8(bitStream, A, f)
-          samples_per_bit = 33
-      else:
-          raise ValueError("Tipo de modulação inválido")
+    if modulation_type.lower() == 'ask':
+      signal = self.transmitter.ASK(bitStream, A, f)
+      samples_per_bit = 100
+    elif modulation_type.lower() == 'fsk':
+      signal = self.transmitter.FSK(bitStream, A, f1, f2)
+      samples_per_bit = 100
+    elif modulation_type.lower() == '8-qam':
+      signal = self.transmitter.QAM8(bitStream, A, f)
+      samples_per_bit = 33
+    else:
+      raise ValueError("Tipo de modulação inválido")
 
-      t = np.arange(len(signal)) / samples_per_bit
+    t = np.arange(len(signal)) / samples_per_bit
 
-      if ax is None:
-          fig, ax = plt.subplots(figsize=(12, 4))
+    if ax is None:
+      fig, ax = plt.subplots(figsize=(12, 4))
 
-      ax.clear()
-      ax.plot(t, signal, linewidth=1.5)
-      ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
-      ax.set_xlabel("Tempo (em unidades de bit)")
-      ax.set_ylabel("Amplitude")
-      ax.grid(True, linestyle='--', alpha=0.7)
+    ax.clear()
+    ax.plot(t, signal, linewidth=1.5)
+    ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    ax.set_xlabel("Tempo (em unidades de bit)")
+    ax.set_ylabel("Amplitude")
+    ax.grid(True, linestyle='--', alpha=0.7)
+
+
