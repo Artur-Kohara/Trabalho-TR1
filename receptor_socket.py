@@ -60,22 +60,27 @@ def start_receiver(gui):
             print(f"[Receptor] Config: {config}")
 
             # 1. Demodulação de portadora
+            # Adiciona ruído no sinal analógico (portadora)
+            analog_signal_noise = rx.addAnalogNoise(signal_bp, None)
+
             if mod_bp == "ASK":
-                demod_bp = rx.demoduleASK(signal_bp, 100, 0.1)
+                demod_bp = rx.demoduleASK(analog_signal_noise, 100, 0.1)
             elif mod_bp == "FSK":
-                demod_bp = rx.demoduleFSK(signal_bp, f0=config["f2"], f1=config["f1"], A=config["A"], bit_samples=100)
+                demod_bp = rx.demoduleFSK(analog_signal_noise, f0=config["f2"], f1=config["f1"], A=config["A"], bit_samples=100)
             elif mod_bp == "8-QAM":
-                demod_bp = rx.demodule8QAM(signal_bp, A=config["A"], f=config["f"], symbol_samples=100)
+                demod_bp = rx.demodule8QAM(analog_signal_noise, A=config["A"], f=config["f"], symbol_samples=100)
             else:
                 raise ValueError("Modulação de portadora inválida")
 
             # 2. Demodulação de banda base
+            # Adiciona ruído no sinal digital (banda base)
+            digital_signal_noise = rx.addDigitalNoise(signal_bb, V=config["V"], bit_error_prob=None)
             if mod_bb == "NRZ":
-                demod_bb = rx.polarNRZDecoder(signal_bb)
+                demod_bb = rx.polarNRZDecoder(digital_signal_noise)
             elif mod_bb == "Manchester":
-                demod_bb = rx.manchesterDecoder(signal_bb)
+                demod_bb = rx.manchesterDecoder(digital_signal_noise)
             elif mod_bb == "Bipolar":
-                demod_bb = rx.bipolarDecoder(signal_bb)
+                demod_bb = rx.bipolarDecoder(digital_signal_noise)
             else:
                 raise ValueError("Modulação de banda base inválida")
 
