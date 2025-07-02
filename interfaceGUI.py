@@ -136,6 +136,8 @@ class InterfaceGUI(Gtk.Window):
       f1 = float(self.entry_f1.get_text())
       f2 = float(self.entry_f2.get_text())
       frame_size = int(self.entry_frame_size.get_text())
+      noise_std = float(self.entry_noise.get_text())
+      prob_bit_flip = float(self.entry_bit_error.get_text())
     except ValueError:
       dialog = Gtk.MessageDialog(
         transient_for=self,
@@ -159,7 +161,9 @@ class InterfaceGUI(Gtk.Window):
       "f": f,
       "f1": f1,
       "f2": f2,
-      "frame_size": frame_size
+      "frame_size": frame_size,
+      "noise_std": noise_std,
+      "prob_bit_flip": prob_bit_flip
     }
 
     text = self.entry_text.get_text()
@@ -242,114 +246,144 @@ class InterfaceGUI(Gtk.Window):
     # Título
     title = Gtk.Label(label="Simulador de Comunicação - Camada Física e Enlace")
     title.set_halign(Gtk.Align.CENTER)
-    title.set_justify(Gtk.Justification.CENTER)
     title.override_font(Pango.font_description_from_string("Bold 16"))
     header_box.pack_start(title, False, False, 5)
     
-    # Entrada de texto
-    entry_frame = Gtk.Frame()
-    entry_frame.set_shadow_type(Gtk.ShadowType.IN)
-    entry_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=5)
-    entry_frame.add(entry_box)
-    
+    # Entrada de texto (mais compacta)
     self.entry_text = Gtk.Entry()
     self.entry_text.set_placeholder_text("Digite sua mensagem aqui...")
-    self.entry_text.set_size_request(600, 40)
-    entry_box.pack_start(self.entry_text, True, True, 10)
-    
-    header_box.pack_start(entry_frame, False, False, 5)
-    
-    # Opções de configuração
-    options_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=20)
-    header_box.pack_start(options_box, False, False, 10)
-    
-    # Frame enquadramento
+    self.entry_text.set_margin_top(5)
+    self.entry_text.set_margin_bottom(5)
+    header_box.pack_start(self.entry_text, False, False, 0)
+
+    # Linha de configurações (compactada)
+    config_grid = Gtk.Grid()
+    config_grid.set_column_spacing(10)
+    config_grid.set_row_spacing(5)
+    config_grid.set_margin_top(5)
+    header_box.pack_start(config_grid, False, False, 0)
+
+    # Coluna 1: Enquadramento (mais compacto)
     frame_framing = Gtk.Frame(label=" Enquadramento ")
-    frame_framing.get_style_context().add_class("option-frame")
-    hbox_framing = Gtk.Box(spacing=10)
-    frame_framing.add(hbox_framing)
+    framing_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+    frame_framing.add(framing_box)
     self.framing_opts = {}
     for label in ["Cont. de Caracteres", "Inserção de Bits", "Inserção de Bytes"]:
       btn = Gtk.RadioButton.new_with_label_from_widget(next(iter(self.framing_opts.values()), None), label)
-      hbox_framing.pack_start(btn, False, False, 0)
+      btn.set_margin_left(5)
+      btn.set_margin_right(5)
+      framing_box.pack_start(btn, False, False, 0)
       self.framing_opts[label] = btn
-    options_box.pack_start(frame_framing, True, True, 0)
-    
-    # Frame EDC
+    config_grid.attach(frame_framing, 0, 0, 1, 2)
+
+    # Coluna 2: EDC (mais compacto)
     frame_edc = Gtk.Frame(label=" Detecção/Correção de Erro ")
-    frame_edc.get_style_context().add_class("option-frame")
-    hbox_edc = Gtk.Box(spacing=10)
-    frame_edc.add(hbox_edc)
+    edc_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+    frame_edc.add(edc_box)
     self.edc_opts = {}
     for label in ["Bit de Paridade Par", "CRC", "Hamming"]:
       btn = Gtk.RadioButton.new_with_label_from_widget(next(iter(self.edc_opts.values()), None), label)
-      hbox_edc.pack_start(btn, False, False, 0)
+      btn.set_margin_left(5)
+      btn.set_margin_right(5)
+      edc_box.pack_start(btn, False, False, 0)
       self.edc_opts[label] = btn
-    options_box.pack_start(frame_edc, True, True, 0)
-    
-    # Frame Parâmetros
+    config_grid.attach(frame_edc, 1, 0, 1, 2)
+
+    # Coluna 3: Parâmetros Básicos (mais compacto)
     frame_params = Gtk.Frame(label=" Parâmetros ")
-    frame_params.get_style_context().add_class("option-frame")
     params_grid = Gtk.Grid()
-    params_grid.set_column_spacing(10)
+    params_grid.set_column_spacing(5)
     params_grid.set_row_spacing(5)
+    params_grid.set_margin_top(5)
+    params_grid.set_margin_bottom(5)
+    params_grid.set_margin_start(5)
+    params_grid.set_margin_end(5)
     frame_params.add(params_grid)
-    
-    # Amplitude BB (V)
-    label_V = Gtk.Label(label="Amplitude BB (V):")
-    label_V.get_style_context().add_class("param-label")
+
+    # Linha 1: Amplitude BB (V)
+    label_V = Gtk.Label(label="V:")
     self.entry_V = Gtk.Entry()
     self.entry_V.set_text("1.0")
-    self.entry_V.get_style_context().add_class("param-entry")
+    self.entry_V.set_width_chars(5)
     params_grid.attach(label_V, 0, 0, 1, 1)
     params_grid.attach(self.entry_V, 1, 0, 1, 1)
-    
-    # Amplitude BP (A)
-    label_A = Gtk.Label(label="Amplitude BP (A):")
-    label_A.get_style_context().add_class("param-label")
+
+    # Linha 2: Amplitude BP (A)
+    label_A = Gtk.Label(label="A:")
     self.entry_A = Gtk.Entry()
     self.entry_A.set_text("1.0")
-    self.entry_A.get_style_context().add_class("param-entry")
+    self.entry_A.set_width_chars(5)
     params_grid.attach(label_A, 0, 1, 1, 1)
     params_grid.attach(self.entry_A, 1, 1, 1, 1)
-    
-    # Frequência base (f)
-    label_f = Gtk.Label(label="Frequência base (f):")
-    label_f.get_style_context().add_class("param-label")
+
+    # Linha 3: Frequência base (f)
+    label_f = Gtk.Label(label="f:")
     self.entry_f = Gtk.Entry()
     self.entry_f.set_text("2.0")
-    self.entry_f.get_style_context().add_class("param-entry")
+    self.entry_f.set_width_chars(5)
     params_grid.attach(label_f, 0, 2, 1, 1)
     params_grid.attach(self.entry_f, 1, 2, 1, 1)
-    
-    # Frequência f1 (FSK)
-    label_f1 = Gtk.Label(label="Frequência f1 (FSK):")
-    label_f1.get_style_context().add_class("param-label")
+
+    # Linha 4: Frequência f1 (FSK)
+    label_f1 = Gtk.Label(label="f1:")
     self.entry_f1 = Gtk.Entry()
     self.entry_f1.set_text("2.0")
-    self.entry_f1.get_style_context().add_class("param-entry")
+    self.entry_f1.set_width_chars(5)
     params_grid.attach(label_f1, 0, 3, 1, 1)
     params_grid.attach(self.entry_f1, 1, 3, 1, 1)
-    
-    # Frequência f2 (FSK)
-    label_f2 = Gtk.Label(label="Frequência f2 (FSK):")
-    label_f2.get_style_context().add_class("param-label")
+
+    # Linha 5: Frequência f2 (FSK)
+    label_f2 = Gtk.Label(label="f2:")
     self.entry_f2 = Gtk.Entry()
     self.entry_f2.set_text("4.0")
-    self.entry_f2.get_style_context().add_class("param-entry")
+    self.entry_f2.set_width_chars(5)
     params_grid.attach(label_f2, 0, 4, 1, 1)
     params_grid.attach(self.entry_f2, 1, 4, 1, 1)
+
+    config_grid.attach(frame_params, 2, 0, 1, 1)
+
+    # Coluna 4: Controle de Ruído
+    frame_noise = Gtk.Frame(label=" Controle de Ruído ")
+    noise_grid = Gtk.Grid()
+    noise_grid.set_column_spacing(5)
+    noise_grid.set_row_spacing(5)
+    params_grid.set_margin_top(5)
+    params_grid.set_margin_bottom(5)
+    params_grid.set_margin_start(5)  
+    params_grid.set_margin_end(5)
+    frame_noise.add(noise_grid)
+
+    # Ruído Analógico
+    label_noise = Gtk.Label(label="σ:")
+    self.entry_noise = Gtk.Entry()
+    self.entry_noise.set_text("0.0")
+    self.entry_noise.set_width_chars(5)
+    noise_grid.attach(label_noise, 0, 0, 1, 1)
+    noise_grid.attach(self.entry_noise, 1, 0, 1, 1)
+
+    # Ruído Digital
+    label_bit_error = Gtk.Label(label="P(erro):")
+    self.entry_bit_error = Gtk.Entry()
+    self.entry_bit_error.set_text("0.0")
+    self.entry_bit_error.set_width_chars(5)
+    noise_grid.attach(label_bit_error, 0, 1, 1, 1)
+    noise_grid.attach(self.entry_bit_error, 1, 1, 1, 1)
+
+    config_grid.attach(frame_noise, 3, 0, 1, 1)
+
+    # Coluna 5: Tamanho do Quadro
+    frame_frame = Gtk.Frame(label=" Quadro ")
+    frame_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+    frame_frame.add(frame_box)
     
-    # Tamanho do quadro
-    label_frame_size = Gtk.Label(label="Tamanho do quadro:")
-    label_frame_size.get_style_context().add_class("param-label")
+    label_size = Gtk.Label(label="Tamanho:")
     self.entry_frame_size = Gtk.Entry()
     self.entry_frame_size.set_text("32")
-    self.entry_frame_size.get_style_context().add_class("param-entry")
-    params_grid.attach(label_frame_size, 0, 5, 1, 1)
-    params_grid.attach(self.entry_frame_size, 1, 5, 1, 1)
+    self.entry_frame_size.set_width_chars(5)
+    frame_box.pack_start(label_size, False, False, 0)
+    frame_box.pack_start(self.entry_frame_size, False, False, 0)
     
-    options_box.pack_start(frame_params, True, True, 0)
+    config_grid.attach(frame_frame, 2, 1, 1, 1)
   
   def create_transmitter(self, parent):
     tx_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=15)
@@ -481,6 +515,3 @@ def main():
   win.connect("destroy", Gtk.main_quit)
   win.show_all()
   Gtk.main()
-
-if __name__ == "__main__":
-  main()

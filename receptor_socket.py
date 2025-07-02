@@ -61,7 +61,7 @@ def start_receiver(gui):
 
             # 1. Demodulação de portadora
             # Adiciona ruído no sinal analógico (portadora)
-            analog_signal_noise = rx.addAnalogNoise(signal_bp, None)
+            analog_signal_noise = rx.addAnalogNoise(signal_bp, noise_std=config["noise_std"])
 
             if mod_bp == "ASK":
                 demod_bp = rx.demoduleASK(analog_signal_noise, 100, 0.1)
@@ -74,7 +74,7 @@ def start_receiver(gui):
 
             # 2. Demodulação de banda base
             # Adiciona ruído no sinal digital (banda base)
-            digital_signal_noise = rx.addDigitalNoise(signal_bb, V=config["V"], bit_error_prob=None)
+            digital_signal_noise = rx.addDigitalNoise(signal_bb, V=config["V"])
             if mod_bb == "NRZ":
                 demod_bb = rx.polarNRZDecoder(digital_signal_noise)
             elif mod_bb == "Manchester":
@@ -86,13 +86,13 @@ def start_receiver(gui):
 
             # 3. Desenquadramento
             if framing == "Cont. de Caracteres":
-                bitStream = rx.chCountUnframing(demod_bb, edc)
+                bitStream = rx.chCountUnframing(demod_bp, edc)
 
             elif framing == "Inserção de Bits":
-                bitStream = rx.bitInsertionUnframing(demod_bb, edc)
+                bitStream = rx.bitInsertionUnframing(demod_bp, edc)
 
             elif framing == "Inserção de Bytes":
-                bitStream = rx.byteInsertionUnframing(demod_bb, edc)
+                bitStream = rx.byteInsertionUnframing(demod_bp, edc)
 
             else:
                 raise ValueError("Enquadramento inválido")

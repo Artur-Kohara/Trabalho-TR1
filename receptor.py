@@ -601,8 +601,8 @@ class Receiver:
     bit_error_prob = self.config.get('bit_error_prob') if bit_error_prob is None else bit_error_prob
 
     #Verifica se bit_error_prob é probabilidade entre 0 e 1
-    if bit_error_prob < 0.0 or bit_error_prob > 1.0:
-      raise ValueError("Probabilidade fora do intervalo [0,1]")
+    if not (0.0 <= bit_error_prob <= 1.0):
+      raise ValueError("bit_error_prob deve estar em [0,1]")
 
     #Converte para numpy array se não for
     if not isinstance(signal, np.ndarray):
