@@ -578,7 +578,7 @@ class Receiver:
   #Adiciona ruído gaussiano ao sinal recebido, a fim de simular o ruído do ambiente 
   #Recebe signal(lista de floats), desvio padrão do ruído
   #Retorna sinal com ruído adicionado (lista de floats)
-  def addNoise (self, signal, noise_std=None):
+  def addAnalogNoise (self, signal, noise_std=None):
     #Busca valores de config caso não passe nenhum argumento
     noise_std = self.config.get('noise_std') if noise_std is None else noise_std
 

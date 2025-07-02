@@ -7,16 +7,21 @@ from gi.repository import GLib
 
 HOST = '127.0.0.1'
 PORT = 5000
-rx = Receiver({})
+rx = None
 
 # Atualiza a interface GTK de forma thread-safe
 def update_interface(gui, demod_bb, demod_bp, text, config):
     ax1 = gui.figure_rx_bb.gca()
-    rx.plotBaseband(demod_bb, config["mod_bb"], ax=ax1)
+    rx.plotBaseband(demod_bb, config["mod_bb"], V=config.get("V", 1.0), ax=ax1)
     gui.canvas_rx_bb.draw()
 
     ax2 = gui.figure_rx_bp.gca()
-    rx.plotPassband(demod_bp, config["mod_bp"], ax=ax2)
+    rx.plotPassband(demod_bp, config["mod_bp"],
+                    A=config.get("A", 1.0),
+                    f=config.get("f", 2.0),
+                    f1=config.get("f1", 2.0),
+                    f2=config.get("f2", 4.0),
+                    ax=ax2)
     gui.canvas_rx_bp.draw()
 
     gui.label_rx_text.set_text(text)
@@ -43,6 +48,10 @@ def start_receiver(gui):
             signal_bp = packet['signal_bp']
             config = packet['config']
 
+            global rx
+            rx = Receiver(config)
+
+
             mod_bp = config.get("mod_bp")
             mod_bb = config.get("mod_bb")
             framing = config.get("framing")
@@ -54,9 +63,9 @@ def start_receiver(gui):
             if mod_bp == "ASK":
                 demod_bp = rx.demoduleASK(signal_bp, 100, 0.1)
             elif mod_bp == "FSK":
-                demod_bp = rx.demoduleFSK(signal_bp, 4, 2, 1, 100)
+                demod_bp = rx.demoduleFSK(signal_bp, f0=config["f2"], f1=config["f1"], A=config["A"], bit_samples=100)
             elif mod_bp == "8-QAM":
-                demod_bp = rx.demodule8QAM(signal_bp, 1, 2, 100)
+                demod_bp = rx.demodule8QAM(signal_bp, A=config["A"], f=config["f"], symbol_samples=100)
             else:
                 raise ValueError("Modulação de portadora inválida")
 
