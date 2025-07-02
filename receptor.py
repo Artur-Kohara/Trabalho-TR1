@@ -571,4 +571,54 @@ class Receiver:
     ax.set_ylabel("Amplitude")
     ax.grid(True, linestyle='--', alpha=0.7)
 
+#############################################
+# Ruído
+#############################################
 
+  #Adiciona ruído gaussiano ao sinal recebido, a fim de simular o ruído do ambiente 
+  #Recebe signal(lista de floats), desvio padrão do ruído
+  #Retorna sinal com ruído adicionado (lista de floats)
+  def addNoise (self, signal, noise_std=None):
+    #Busca valores de config caso não passe nenhum argumento
+    noise_std = self.config.get('noise_std') if noise_std is None else noise_std
+
+    #Converte o sinal para um array numpy de floats, caso não seja
+    if not isinstance(signal, np.ndarray):
+      signal = np.array(signal, dtype=np.float64)
+  
+    noise = np.random.normal(0, noise_std, len(signal)) #(mean, std, quant valores gerados)
+    noisy_signal = signal + noise
+    
+    #Retorna lista de floats, conforme a entrada 
+    return noisy_signal.tolist()
+
+  #Flipa UM bit de posição aleatória, com certa probabilidade
+  #Recebe o sinal (lista de inteiros), tensão(float) e probabilidade de flipar o bit(float entre 0.0 e 1.0)
+  #Retorna o sinal com um bit possivelmente flipado
+  def addDigitalNoise(self, signal, V=None,bit_error_prob=None):
+    #Busca valor de config caso não passe nenhum argumento
+    V = self.config.get('V') if V is None else V
+    bit_error_prob = self.config.get('bit_error_prob') if bit_error_prob is None else bit_error_prob
+
+    #Verifica se bit_error_prob é probabilidade entre 0 e 1
+    if bit_error_prob < 0.0 or bit_error_prob > 1.0:
+      raise ValueError("Probabilidade fora do intervalo [0,1]")
+
+    #Converte para numpy array se não for
+    if not isinstance(signal, np.ndarray):
+      signal = np.array(signal)
+
+    #Cria cópia para não modificar o original
+    noisy_signal = signal.copy()
+
+    #Decide se vai ocorrer erro. np.random.random() já gera valor entre 0 e 1 por padrão
+    if np.random.random() < bit_error_prob:
+      #Escolhe uma posição aleatória
+      error_pos = np.random.randint(0, len(signal))
+      #Flipa o bit (inverte a polaridade)
+      if noisy_signal[error_pos] == 0:
+        noisy_signal[error_pos] = V #Se bit for 0 vira V
+      else:
+        noisy_signal[error_pos] = 0 #Senão, vira 0
+    
+    return noisy_signal.tolist()

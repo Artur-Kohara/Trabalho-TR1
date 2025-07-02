@@ -16,7 +16,8 @@ class Transmitter:
         'f2': 4.0,                            #Frequência para bit 0 (FSK) (float)
         'frame_size': 32,                     #Tamanho do quadro em bits (int) #OBS: aceita frame_size de até 255 bits
         'edc_type': 'Bit de Paridade Par',    #Tipo do edc (string)
-        'noise_std': 0.0,                       #Desvio padrão do ruído (float)
+        'noise_std': 0.0,                     #Desvio padrão do ruído (float)
+        'bit_error_prob': 0.0,                #Probabilidade de flipar um bit (float entre 0.0 e 1.0)
     }
     
     #Mescla config do usuário com os valores padrão, priorizando os do usuário
@@ -496,30 +497,3 @@ class Transmitter:
     if ax is None:
       plt.tight_layout()
       plt.show()
-
-  #############################################
-  # Ruído
-  #############################################
-
-  #Adiciona ruído gaussiano ao sinal recebido, a fim de simular o ruído do ambiente 
-  #Recebe signal(array de floats), desvio padrão do ruído
-  #Retorna sinal com ruído adicionado (array de floats)
-  def addNoise (self, signal, noise_std=None):
-    #Busca valores de config caso não passe nenhum argumento
-    noise_std = self.config.get('noise_std') if noise_std is None else noise_std
-
-    # Verifica se é um sinal digital 
-    if all(x in (0, 1) for x in signal):  # Sinal digital (bits)
-      # Para sinais digitais, aplicamos ruído por bit
-      noise = np.random.normal(0, noise_std, len(signal)) #(mean, std, quant valores gerados)
-      noisy_signal = np.where(signal == 1, 
-                              1 + noise,  # Adiciona ruído ao 1 lógico
-                              0 + noise)  # Adiciona ruído ao 0 lógico
-
-    #Sinal analógico 
-    else:
-      # Aplica ruído diretamente ao sinal contínuo
-      noise = np.random.normal(0, noise_std, len(signal))
-      noisy_signal = signal + noise
-    
-    return noisy_signal
