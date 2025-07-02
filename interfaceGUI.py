@@ -197,14 +197,14 @@ class InterfaceGUI(Gtk.Window):
     if config["mod_bb"] == "NRZ":
       mod_bb = tx.polarNRZCoder(bits_framed, config["V"])
     elif config["mod_bb"] == "Manchester":
-      mod_bb = tx.manchesterCoder(bits_framed)
+      mod_bb = tx.manchesterCoder(bits_framed, config["V"])
     elif config["mod_bb"] == "Bipolar":
       mod_bb = tx.bipolarCoder(bits_framed, config["V"])
 
     # Plot BB
     ax1 = self.figure_bb.gca()
     ax1.clear()
-    tx.plotBaseband(bits_framed, config["mod_bb"], ax=ax1)
+    tx.plotBaseband(bits_framed, config["mod_bb"], config["V"], ax=ax1)
     self.canvas_bb.draw()
 
     # Modulação BP

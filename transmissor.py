@@ -211,17 +211,17 @@ class Transmitter:
 
     return modulated_signal
 
-  #Modulação Manchester: 0 é representado por [0, 1] e 1 por [1, 0], oq simula a operação xor entre o trem de bits e o clock, adicionando sincronia
+  #Modulação Manchester: 0 é representado por [0, V] e 1 por [V, 0], oq simula a operação xor entre o trem de bits e o clock, adicionando sincronia
   #Recebe um trem de bits (lista de bits)
   #Retorna um sinal modulado (lista de bits)
-  def manchesterCoder(self,bitStream):
+  def manchesterCoder(self,bitStream, V=None):
     modulated_signal = []
 
     for bit in bitStream:
       if bit == 0:
-        modulated_signal.extend([0, 1]) #0 é representado por [0, 1]. OBS:extend já achata a lista
+        modulated_signal.extend([0, V]) #0 é representado por [0, 1]. OBS:extend já achata a lista
       else:
-        modulated_signal.extend([1, 0]) #1 é representado por [1, 0]
+        modulated_signal.extend([V, 0]) #1 é representado por [1, 0]
 
     return modulated_signal
 
@@ -425,7 +425,7 @@ class Transmitter:
       signal = self.polarNRZCoder(bitStream, V)
       time_scale = np.arange(len(signal))
     elif modulation_type.lower() == 'manchester':
-      signal = self.manchesterCoder(bitStream)
+      signal = self.manchesterCoder(bitStream, V)
       time_scale = np.arange(0, len(bitStream), 0.5)
     elif modulation_type.lower() == 'bipolar':
       signal = self.bipolarCoder(bitStream, V)
@@ -452,7 +452,7 @@ class Transmitter:
     if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
       ax.set_ylim(-V * 1.2, V * 1.2)
     elif modulation_type.lower() == 'manchester':
-      ax.set_ylim(-0.2, 1.2)
+      ax.set_ylim(-0.2, V * 1.2)
 
     if ax is None:
       plt.tight_layout()

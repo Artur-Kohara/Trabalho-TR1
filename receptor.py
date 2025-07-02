@@ -163,7 +163,7 @@ class Receiver:
   
     return bits
   
-  def manchesterDecoder(self, signal):
+  def manchesterDecoder(self, signal, V=1):
     """
     Decodifica um sinal modulado Manchester
     signal: lista de amplitudes do sinal modulado
@@ -173,10 +173,10 @@ class Receiver:
     # Itera sobre os índices do sinal, de 2 em 2, porque cada bit codificado ocupa dois valores no sinal
     for i in range(0, len(signal), 2):
       # Se a primeira metade está alta (1) e a segunda está baixa (0), representa um bit 1
-      if (signal[i] == 1) and (signal[i + 1] == 0):
+      if (signal[i] == V) and (signal[i + 1] == 0):
         bits.append(1)
       #Se a primeira metade está baixa (0) e a segunda está alta (1), representa um bit 0
-      elif (signal[i] == 0) and (signal[i + 1] == 1):
+      elif (signal[i] == 0) and (signal[i + 1] == V):
         bits.append(0)
   
     return bits
@@ -513,7 +513,7 @@ class Receiver:
       signal = self.transmitter.polarNRZCoder(bitStream, V)
       time_scale = np.arange(len(signal))
     elif modulation_type.lower() == 'manchester':
-      signal = self.transmitter.manchesterCoder(bitStream)
+      signal = self.transmitter.manchesterCoder(bitStream, V)
       time_scale = np.arange(0, len(bitStream), 0.5)
     elif modulation_type.lower() == 'bipolar':
       signal = self.transmitter.bipolarCoder(bitStream, V)
@@ -539,7 +539,7 @@ class Receiver:
     if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
       ax.set_ylim(-V * 1.2, V * 1.2)
     elif modulation_type.lower() == 'manchester':
-      ax.set_ylim(-0.2, 1.2)
+      ax.set_ylim(-0.2, V * 1.2)
 
   def plotPassband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None, ax=None):
     A = self.config.get('A', 1.0) if A is None else A
@@ -595,7 +595,7 @@ class Receiver:
   #Flipa UM bit de posição aleatória, com certa probabilidade
   #Recebe o sinal (lista de inteiros), tensão(float) e probabilidade de flipar o bit(float entre 0.0 e 1.0)
   #Retorna o sinal com um bit possivelmente flipado
-  def addDigitalNoise(self, signal, V=None,bit_error_prob=None):
+  def addDigitalNoise(self, signal, V=None, bit_error_prob=None, modulation=None):
     #Busca valor de config caso não passe nenhum argumento
     V = self.config.get('V') if V is None else V
     bit_error_prob = self.config.get('bit_error_prob') if bit_error_prob is None else bit_error_prob
@@ -616,9 +616,39 @@ class Receiver:
       #Escolhe uma posição aleatória
       error_pos = np.random.randint(0, len(signal))
       #Flipa o bit (inverte a polaridade)
-      if noisy_signal[error_pos] == 0:
-        noisy_signal[error_pos] = V #Se bit for 0 vira V
-      else:
-        noisy_signal[error_pos] = 0 #Senão, vira 0
+      if modulation == "NRZ":
+        if noisy_signal[error_pos] == -V:
+          noisy_signal[error_pos] = V
+        else:
+          noisy_signal[error_pos] = -V
+
+      elif modulation == "Manchester":
+        # Para flipar 1 bit no manchester é preciso flipar duas posições do sinal
+        # Caso a posição do erro seja par, é preciso flipar a próxima posição também
+        if error_pos % 2 == 0:
+          if noisy_signal[error_pos] == V:
+            noisy_signal[error_pos] = 0
+            noisy_signal[error_pos+1] = V
+          else:
+            noisy_signal[error_pos] = V
+            noisy_signal[error_pos+1] = 0
+
+        # Caso seja ímpar, é preciso flipar a posição anterior também
+        else:
+          if noisy_signal[error_pos] == V:
+            noisy_signal[error_pos] = 0
+            noisy_signal[error_pos-1] = V
+          else:
+            noisy_signal[error_pos] = V
+            noisy_signal[error_pos-1] = 0
+
+      elif modulation == "Bipolar":
+        if noisy_signal[error_pos] == V:
+          noisy_signal[error_pos] = -V
+        elif noisy_signal[error_pos] == -V:
+          noisy_signal[error_pos] = V
+        else:
+          noisy_signal[error_pos] = V
+
     
     return noisy_signal.tolist()

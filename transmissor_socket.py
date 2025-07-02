@@ -35,7 +35,7 @@ def socketTrasmission(config_transmissao):
     if mod_bb == "NRZ":
         signal_bb = tx.polarNRZCoder(framed_stream, 1)
     elif mod_bb == "Manchester":
-        signal_bb = tx.manchesterCoder(framed_stream)
+        signal_bb = tx.manchesterCoder(framed_stream, 1)
     elif mod_bb == "Bipolar":
         signal_bb = tx.bipolarCoder(framed_stream, 1)
     else:

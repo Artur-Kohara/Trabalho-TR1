@@ -74,11 +74,11 @@ def start_receiver(gui):
 
             # 2. Demodulação de banda base
             # Adiciona ruído no sinal digital (banda base)
-            digital_signal_noise = rx.addDigitalNoise(signal_bb, V=config["V"])
+            digital_signal_noise = rx.addDigitalNoise(signal_bb, V=config["V"], bit_error_prob=config["prob_bit_flip"], modulation=mod_bb)
             if mod_bb == "NRZ":
-                demod_bb = rx.polarNRZDecoder(digital_signal_noise)
+                demod_bb = rx.polarNRZDecoder(digital_signal_noise, V=config["V"])
             elif mod_bb == "Manchester":
-                demod_bb = rx.manchesterDecoder(digital_signal_noise)
+                demod_bb = rx.manchesterDecoder(digital_signal_noise, V=config["V"])
             elif mod_bb == "Bipolar":
                 demod_bb = rx.bipolarDecoder(digital_signal_noise)
             else:
@@ -86,13 +86,13 @@ def start_receiver(gui):
 
             # 3. Desenquadramento
             if framing == "Cont. de Caracteres":
-                bitStream = rx.chCountUnframing(demod_bp, edc)
+                bitStream = rx.chCountUnframing(demod_bb, edc)
 
             elif framing == "Inserção de Bits":
-                bitStream = rx.bitInsertionUnframing(demod_bp, edc)
+                bitStream = rx.bitInsertionUnframing(demod_bb, edc)
 
             elif framing == "Inserção de Bytes":
-                bitStream = rx.byteInsertionUnframing(demod_bp, edc)
+                bitStream = rx.byteInsertionUnframing(demod_bb, edc)
 
             else:
                 raise ValueError("Enquadramento inválido")
