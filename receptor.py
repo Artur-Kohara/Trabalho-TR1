@@ -24,15 +24,17 @@ class Receiver:
 # Demodulação (portadora)
 ################################################################################
 
-  def demoduleASK(self, signal, bit_samples=100, threshold=0.2):
+  def demoduleASK(self, signal, bit_samples=100, A=None):
     """
     signal: array de float, contendo o signal modulado ASK
     bit_samples: número de amostras por bit
-    threshold: limiar de decisão da presença de onda
+    A: Amplitude do sinal (float)
     return: lista de bits
     """
     bits = []
-
+    A = self.config.get('A', 1.0) if A is None else A
+    # Limiar de decisão adaptável para a amplitude utilizada
+    threshold = (A**2)/4
     # Percorre o signal em segments de tamanho bit_samples
     for i in range(0, len(signal), bit_samples):
       # Extrai um segment (correspondente a um bit)

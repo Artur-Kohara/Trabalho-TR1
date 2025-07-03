@@ -66,7 +66,7 @@ def start_receiver(gui):
       analog_signal_noise = rx.addAnalogNoise(signal_bp, noise_std=config["noise_std"])
 
       if mod_bp == "ASK":
-        demod_bp = rx.demoduleASK(analog_signal_noise, bit_samples=100, threshold=0.2)
+        demod_bp = rx.demoduleASK(analog_signal_noise, bit_samples=100, A=config["A"])
       elif mod_bp == "FSK":
         demod_bp = rx.demoduleFSK(analog_signal_noise, f0=config["f2"], f1=config["f1"], A=config["A"], bit_samples=100)
       elif mod_bp == "8-QAM":
@@ -89,11 +89,11 @@ def start_receiver(gui):
       # 3. Desenquadramento
       try: #Desenquadramento é o único que levanta ValueError
         if framing == "Cont. de Caracteres":
-          bitStream = rx.chCountUnframing(demod_bb, edc)
+          bitStream = rx.chCountUnframing(demod_bp, edc)
         elif framing == "Inserção de Bits":
-          bitStream = rx.bitInsertionUnframing(demod_bb, edc)
+          bitStream = rx.bitInsertionUnframing(demod_bp, edc)
         elif framing == "Inserção de Bytes":
-          bitStream = rx.byteInsertionUnframing(demod_bb, edc)
+          bitStream = rx.byteInsertionUnframing(demod_bp, edc)
 
       except ValueError as e:
         dialog = Gtk.MessageDialog(
