@@ -215,6 +215,9 @@ class Transmitter:
   #Recebe um trem de bits (lista de bits)
   #Retorna um sinal modulado (lista de bits)
   def manchesterCoder(self,bitStream, V=None):
+    #Busca valor de config caso não passe nenhum argumento
+    V = self.config.get('V') if V is None else V
+
     modulated_signal = []
 
     for bit in bitStream:

@@ -24,11 +24,11 @@ class Receiver:
 # Demodulação (portadora)
 ################################################################################
 
-  def demoduleASK(self, signal, bit_samples=100, treshold=0.1):
+  def demoduleASK(self, signal, bit_samples=100, threshold=0.2):
     """
     signal: array de float, contendo o signal modulado ASK
     bit_samples: número de amostras por bit
-    treshold: limiar de decisão da presença de onda
+    threshold: limiar de decisão da presença de onda
     return: lista de bits
     """
     bits = []
@@ -40,7 +40,7 @@ class Receiver:
       # Cálculo de energia média do segment (eleva ao quadrado cada amostra e tira a média)
       energy = np.mean(np.square(segment))
 
-      if energy > treshold:
+      if energy > threshold:
         bits.append(1)
       else:
         bits.append(0)
@@ -249,7 +249,7 @@ class Receiver:
         cleaned = self.checkHamming(frame_with_edc)
 
       if cleaned is False:
-        raise ValueError("Erro de detectado")
+        raise ValueError("Erro de desenquadramento detectado")
       
       # Adiciona bits limpos ao resultado
       recovered_frames.extend(cleaned)
@@ -617,10 +617,8 @@ class Receiver:
       error_pos = np.random.randint(0, len(signal))
       #Flipa o bit (inverte a polaridade)
       if modulation == "NRZ":
-        if noisy_signal[error_pos] == -V:
-          noisy_signal[error_pos] = V
-        else:
-          noisy_signal[error_pos] = -V
+        #+V representa 1, -V representa 0
+        noisy_signal[error_pos] = -noisy_signal[error_pos]
 
       elif modulation == "Manchester":
         # Para flipar 1 bit no manchester é preciso flipar duas posições do sinal
@@ -643,12 +641,11 @@ class Receiver:
             noisy_signal[error_pos-1] = 0
 
       elif modulation == "Bipolar":
-        if noisy_signal[error_pos] == V:
-          noisy_signal[error_pos] = -V
-        elif noisy_signal[error_pos] == -V:
+        #0 -> 0 ; 1 -> +V ou -V 
+        if noisy_signal[error_pos] == 0:
           noisy_signal[error_pos] = V
         else:
-          noisy_signal[error_pos] = V
+          noisy_signal[error_pos] = 0
 
     
     return noisy_signal.tolist()

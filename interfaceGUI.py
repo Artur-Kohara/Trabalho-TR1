@@ -138,6 +138,21 @@ class InterfaceGUI(Gtk.Window):
       frame_size = int(self.entry_frame_size.get_text())
       noise_std = float(self.entry_noise.get_text())
       prob_bit_flip = float(self.entry_bit_error.get_text())
+
+      # Validação do prob_bit_flip
+      if not isinstance(prob_bit_flip, float) or not (0.0 <= prob_bit_flip <= 1.0):
+        dialog = Gtk.MessageDialog(
+          transient_for=self,
+          flags=0,
+          message_type=Gtk.MessageType.ERROR,
+          buttons=Gtk.ButtonsType.OK,
+          text="Probabilidade inválida",
+        )
+        dialog.format_secondary_text("A probabilidade de erro deve ser float entre 0.0 e 1.0")
+        dialog.run()
+        dialog.destroy()
+        return
+
     except ValueError:
       dialog = Gtk.MessageDialog(
         transient_for=self,
