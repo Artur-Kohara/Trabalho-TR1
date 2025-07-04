@@ -12,7 +12,7 @@ PORT = 5000
 rx = None
 
 # Atualiza a interface GTK de forma thread-safe
-def update_interface(gui, demod_bb, demod_bp, text, config):
+def update_interface(gui, demod_bb, demod_bp, text, config, error_pos=None, is_there_error=False):
   ax1 = gui.figure_rx_bb.gca()
   rx.plotBaseband(demod_bb, config["mod_bb"], V=config.get("V", 1.0), ax=ax1)
   gui.canvas_rx_bb.draw()
@@ -28,6 +28,24 @@ def update_interface(gui, demod_bb, demod_bp, text, config):
 
   #Atualiza o texto recebido
   gui.label_rx_text.set_text(text)
+
+  #Atualiza a recepcão de erro
+  if is_there_error:
+    error_info = ""
+    if config["edc"] == "Hamming" and error_pos is not None:
+      error_info = f"Erro corrigido na posição {error_pos} (Hamming)"
+    elif config["edc"] == "Bit de Paridade Par":
+      error_info = "Erro detectado! Paridade inválida"
+    elif config["edc"] == "CRC":
+      error_info = "Erro detectado! CRC inválido"
+    else:
+      error_info = "Erro detectado durante a recepção"
+
+    gui.label_error_info.set_text(error_info)
+    gui.frame_error.set_visible(True)
+  else:
+    gui.frame_error.set_visible(False)
+
   return False
 
 def start_receiver(gui):
@@ -112,4 +130,4 @@ def start_receiver(gui):
       text = rx.receive(bitStream)
 
       # Atualizar interface
-      GLib.idle_add(update_interface, gui, demod_bb, demod_bp, text, config)
+      GLib.idle_add(update_interface, gui, demod_bb, demod_bp, text, config, error_pos, is_there_error)
