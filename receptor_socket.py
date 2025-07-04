@@ -90,11 +90,11 @@ def start_receiver(gui):
       # 3. Desenquadramento
       try: #Desenquadramento é o único que levanta ValueError
         if framing == "Cont. de Caracteres":
-          bitStream, error_pos, is_there_error = rx.chCountUnframing(demod_bp, edc)
+          bitStream, error_pos, is_there_error = rx.chCountUnframing(demod_bb, edc)
         elif framing == "Inserção de Bits":
-          bitStream, error_pos, is_there_error= rx.bitInsertionUnframing(demod_bp, edc)
+          bitStream, error_pos, is_there_error= rx.bitInsertionUnframing(demod_bb, edc)
         elif framing == "Inserção de Bytes":
-          bitStream, error_pos, is_there_error = rx.byteInsertionUnframing(demod_bp, edc)
+          bitStream, error_pos, is_there_error = rx.byteInsertionUnframing(demod_bb, edc)
 
       except ValueError as e:
         dialog = Gtk.MessageDialog(

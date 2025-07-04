@@ -320,7 +320,7 @@ class InterfaceGUI(Gtk.Window):
     params = [
         ("V:", "1.0", 0, 0), ("A:", "1.0", 0, 1),
         ("f:", "2.0", 1, 0), ("f1:", "2.0", 1, 1),
-        ("f2:", "4.0", 2, 0), ("Tam quadro:", "32", 2, 1)
+        ("f2:", "4.0", 2, 0), ("Tam:", "32", 2, 1)
     ]
     
     for label, default, row, col in params:
@@ -492,14 +492,12 @@ class InterfaceGUI(Gtk.Window):
     frame_text.get_style_context().add_class("option-frame")
     text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
     frame_text.add(text_box)
-    
+
     self.label_rx_text = Gtk.Label(label="Aguardando transmissão...")
     self.label_rx_text.set_halign(Gtk.Align.START)
     self.label_rx_text.get_style_context().add_class("received-text")
     self.label_rx_text.set_size_request(-1, 80)
     text_box.pack_start(self.label_rx_text, True, True, 5)
-    
-    rx_box.pack_start(frame_text, False, False, 0)
 
     # Frame para informações de erro (inicialmente vazio)
     self.frame_error = Gtk.Frame(label=" Informações de Erro ")
@@ -514,7 +512,10 @@ class InterfaceGUI(Gtk.Window):
     self.label_error_info.get_style_context().add_class("error-info")
     error_box.pack_start(self.label_error_info, True, True, 5)
 
+    # Adiciona o frame de erro ao text_box
     text_box.pack_start(self.frame_error, False, False, 5)
+
+    # Adiciona o frame_text ao rx_box 
     rx_box.pack_start(frame_text, False, False, 0)
 
 
