@@ -485,7 +485,6 @@ class InterfaceGUI(Gtk.Window):
     self.canvas_rx_bp.set_size_request(500, 190)
     graph_box.add(self.canvas_rx_bp)
     rx_bp_box.pack_start(graph_box, True, True, 5)
-    
     rx_box.pack_start(frame_rx_bp, True, True, 10)
     
     # Texto recebido
@@ -500,6 +499,22 @@ class InterfaceGUI(Gtk.Window):
     self.label_rx_text.set_size_request(-1, 80)
     text_box.pack_start(self.label_rx_text, True, True, 5)
     
+    rx_box.pack_start(frame_text, False, False, 0)
+
+    # Frame para informações de erro (inicialmente vazio)
+    self.frame_error = Gtk.Frame(label=" Informações de Erro ")
+    self.frame_error.get_style_context().add_class("error-frame")
+    self.frame_error.set_visible(False)  # Inicialmente oculto
+    error_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+    self.frame_error.add(error_box)
+
+    # Label para detalhes do erro
+    self.label_error_info = Gtk.Label()
+    self.label_error_info.set_halign(Gtk.Align.START)
+    self.label_error_info.get_style_context().add_class("error-info")
+    error_box.pack_start(self.label_error_info, True, True, 5)
+
+    text_box.pack_start(self.frame_error, False, False, 5)
     rx_box.pack_start(frame_text, False, False, 0)
 
 

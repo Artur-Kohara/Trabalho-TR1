@@ -26,6 +26,7 @@ def update_interface(gui, demod_bb, demod_bp, text, config):
                   ax=ax2)
   gui.canvas_rx_bp.draw()
 
+  #Atualiza o texto recebido
   gui.label_rx_text.set_text(text)
   return False
 
@@ -89,11 +90,11 @@ def start_receiver(gui):
       # 3. Desenquadramento
       try: #Desenquadramento é o único que levanta ValueError
         if framing == "Cont. de Caracteres":
-          bitStream = rx.chCountUnframing(demod_bp, edc)
+          bitStream, error_pos, is_there_error = rx.chCountUnframing(demod_bp, edc)
         elif framing == "Inserção de Bits":
-          bitStream = rx.bitInsertionUnframing(demod_bp, edc)
+          bitStream, error_pos, is_there_error= rx.bitInsertionUnframing(demod_bp, edc)
         elif framing == "Inserção de Bytes":
-          bitStream = rx.byteInsertionUnframing(demod_bp, edc)
+          bitStream, error_pos, is_there_error = rx.byteInsertionUnframing(demod_bp, edc)
 
       except ValueError as e:
         dialog = Gtk.MessageDialog(

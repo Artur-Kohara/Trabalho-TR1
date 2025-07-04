@@ -214,6 +214,8 @@ class Receiver:
     """
     i = 0
     recovered_frames = []
+    error_pos = None
+    is_there_error = False
 
     while i < len(bitStream):
       if i + 8 > len(bitStream):
@@ -248,7 +250,7 @@ class Receiver:
       elif edc_type == "CRC":
         cleaned = self.checkCRC(frame_with_edc)
       elif edc_type == "Hamming":
-        cleaned = self.checkHamming(frame_with_edc)
+        cleaned,error_pos,is_there_error = self.checkHamming(frame_with_edc)
 
       if cleaned is False:
         raise ValueError("Erro de desenquadramento detectado")
@@ -259,7 +261,7 @@ class Receiver:
       # Avança para o próximo quadro
       i = end
 
-    return recovered_frames
+    return recovered_frames, error_pos, is_there_error
   
   def byteInsertionUnframing(self, bitStream, edc_type):
     """
@@ -274,6 +276,8 @@ class Receiver:
 
     i = 0
     n = len(bitStream)
+    error_pos = None
+    is_there_error = False
 
     while i <= (n - 8):
         # Detecta flag de início
@@ -311,7 +315,7 @@ class Receiver:
             elif edc_type == "CRC":
                 cleaned = self.checkCRC(frame_without_padding)
             elif edc_type == "Hamming":
-                cleaned = self.checkHamming(frame_without_padding)
+                cleaned, error_pos, is_there_error = self.checkHamming(frame_without_padding)
 
             if cleaned == False:
                 raise ValueError("Erro de EDC detectado")
@@ -321,7 +325,7 @@ class Receiver:
         else:
             i += 1
 
-    return recovered_data
+    return recovered_data, error_pos, is_there_error
   
   def bitInsertionUnframing(self, bitStream, edc_type):
     """
@@ -335,6 +339,9 @@ class Receiver:
     n = len(bitStream)
     i = 0
     recovered_bits = []
+    error_pos = None
+    is_there_error = False
+
     # Percorre o bitStream garantindo que não ultrapasse o tamanho do stream
     while i <= n - flag_len:
         # Verifica se encontrou uma flag de início
@@ -357,7 +364,7 @@ class Receiver:
                     elif edc_type == "CRC":
                         cleaned_data = self.checkCRC(cleaned_frame)
                     elif edc_type == "Hamming":
-                        cleaned_data = self.checkHamming(cleaned_frame)
+                        cleaned_data, error_pos, is_there_error = self.checkHamming(cleaned_frame)
 
                     if cleaned_data == False:
                         raise ValueError("Erro de EDC detectado")
@@ -371,7 +378,7 @@ class Receiver:
         else:
             i += 1
 
-    return recovered_bits
+    return recovered_bits, error_pos, is_there_error
   
   # Função auxiliar que remove o bit 0 inserido após cinco bits 1 seguidos
   def removeBit0(self, frame_data):
@@ -452,7 +459,7 @@ class Receiver:
     """
     Verifica e corrige um erro de 1 bit usando código de Hamming
     bitStream: lista de bits codificada com Hamming (incluindo paridade)
-    return: lista de bits corrigidos sem bits de paridade
+    return: lista de bits corrigidos sem bits de paridade, booleano indicando se houve erro e sua posição do erro, se houver
     """
     n = len(bitStream)
     # Armazeno o número de bits de paridade
@@ -463,6 +470,8 @@ class Receiver:
 
     # Variável para armazenar a posição do erro caso exista
     error_pos = 0
+    #Variável para armazenar se houve erro ou não
+    is_there_error = False
 
     # Verifica cada bit de paridade
     for i in range(p):
@@ -482,6 +491,7 @@ class Receiver:
       # Salva a posição do erro usando os bits de paridade diferentes de 0
       if parity != 0:
         error_pos += parity_pos
+        is_there_error = True
 
     # Corrige o erro se necessário (error_pos > 0, ou seja, os bits de paridade deram diferente de 0)
     if error_pos != 0 and error_pos <= n:
@@ -494,7 +504,7 @@ class Receiver:
       if not self._is_power_of_two(i):
         corrected_bitStream.append(bitStream[i-1])
 
-    return corrected_bitStream
+    return corrected_bitStream, error_pos, is_there_error
 
   # Função auxiliar que verifica se um número é uma potência de dois
   def _is_power_of_two(self, x):
