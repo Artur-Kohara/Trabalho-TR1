@@ -1,13 +1,11 @@
-#Esse arquivo consiste na classe do transmissor e seus métodos.
-
 import numpy as np
 import matplotlib.pyplot as plt
 
 class Transmitter:
 
-  #Config é um parâmetro passado na inicialização que controla aspectos do funcionamento do transmissor. ex: bitrate, codificação etc
+  #Config é um parâmetro passado na inicialização que controla aspectos do funcionamento do transmissor. ex: tam quadro, codificação etc
   def __init__(self, config=None):
-    # Configuração padrão otimizada
+    #Configuração padrão otimizada
     self.default_config = {
         'V': 1.0,                             #Amplitude para modulações de banda base (float)
         'A': 1.0,                             #Amplitude para modulações de banda passante (float)
@@ -16,17 +14,21 @@ class Transmitter:
         'f2': 4.0,                            #Frequência para bit 0 (FSK) (float)
         'frame_size': 32,                     #Tamanho do quadro em bits (int) #OBS: aceita frame_size de até 255 bits
         'edc_type': 'Bit de Paridade Par',    #Tipo do edc (string)
+        'noise_std': 0.0,                     #Desvio padrão do ruído (float)
+        'bit_error_prob': 0.0,                #Probabilidade de flipar um bit (float entre 0.0 e 1.0)
     }
     
     #Mescla config do usuário com os valores padrão, priorizando os do usuário
     self.config = {**self.default_config, **(config or {})}
     
   #Método que recebe uma string e retorna o trem de bits equivalente
+  #Recebe: string do texto
+  #Retorna: trem de bits (lista de inteiros)
   def text2Binary(self, text):
     bitStream = []
     for c in text:
       unicodeValue = ord(c)  #Valor Unicode de cada caractere
-      binary = format(unicodeValue, '08b')  #Converte para byte binário
+      binary = format(unicodeValue, '08b')  #Converte o inteiro unicodeValue para um byte binário
       #Converte cada caractere binário para inteiro e adiciona à lista
       bitStream.extend([int(bit) for bit in binary])  
     return bitStream
@@ -96,6 +98,7 @@ class Transmitter:
         edc_frame = self.addHamming(frame_data)
 
       #Adiciona padding até o trem de bits ficar de tamanho múltiplo de 8
+      #Necessário pq após adicionar EDC, os quadros não são mais múltiplos de 8, e isso é necessário no desenquadramento
       pad_len = (8 - len(edc_frame) % 8) % 8
       #Calcula um header (8 bits) indicando o tamanho do padding
       header = [int(b) for b in format(pad_len, '08b')]
@@ -209,17 +212,20 @@ class Transmitter:
 
     return modulated_signal
 
-  #Modulação Manchester: 0 é representado por [0, 1] e 1 por [1, 0], oq simula a operação xor entre o trem de bits e o clock, adicionando sincronia
+  #Modulação Manchester: 0 é representado por [0, V] e 1 por [V, 0], oq simula a operação xor entre o trem de bits e o clock, adicionando sincronia
   #Recebe um trem de bits (lista de bits)
   #Retorna um sinal modulado (lista de bits)
-  def manchesterCoder(self,bitStream):
+  def manchesterCoder(self,bitStream, V=None):
+    #Busca valor de config caso não passe nenhum argumento
+    V = self.config.get('V') if V is None else V
+
     modulated_signal = []
 
     for bit in bitStream:
       if bit == 0:
-        modulated_signal.extend([0, 1]) #0 é representado por [0, 1]. OBS:extend já achata a lista
+        modulated_signal.extend([0, V]) #0 é representado por [0, V]. OBS:extend já achata a lista
       else:
-        modulated_signal.extend([1, 0]) #1 é representado por [1, 0]
+        modulated_signal.extend([V, 0]) #1 é representado por [V, 0]
 
     return modulated_signal
 
@@ -303,13 +309,13 @@ class Transmitter:
     A = self.config.get('A') if A is None else A
     f = self.config.get('f') if f is None else f
 
-    # Adiciona zeros ao final caso não seja múltiplo de 3
+    #Adiciona zeros ao final caso não seja múltiplo de 3
     while len(bitStream) % 3 != 0:
       bitStream.append(0)
 
     sig_size = len(bitStream)
     num_symbols = len(bitStream) // 3
-    signal = np.zeros(num_symbols * 100, dtype=float)  # 100 amostras por símbolo
+    signal = np.zeros(num_symbols * 100, dtype=float)  #100 amostras por símbolo
 
     #Associa o trio de bits à uma tupla (I,Q)
     constellation = {
@@ -376,8 +382,8 @@ class Transmitter:
     #Calcula o número de bits de paridades necessários
     m = len(frame)
     p = 0
-    while 2**p < m + p + 1: #Precisamos que 2**p seja pelo menos igual ao tamanho total após o hamming + 1 (caso em que não ha erro) para codificar todas as posições de erro
-        p += 1
+    while 2**p < m + p + 1: 
+      p += 1
     num_parity_bits = p
 
     #Insere zeros nas posições que são potências de 2
@@ -423,7 +429,7 @@ class Transmitter:
       signal = self.polarNRZCoder(bitStream, V)
       time_scale = np.arange(len(signal))
     elif modulation_type.lower() == 'manchester':
-      signal = self.manchesterCoder(bitStream)
+      signal = self.manchesterCoder(bitStream, V)
       time_scale = np.arange(0, len(bitStream), 0.5)
     elif modulation_type.lower() == 'bipolar':
       signal = self.bipolarCoder(bitStream, V)
@@ -450,7 +456,7 @@ class Transmitter:
     if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
       ax.set_ylim(-V * 1.2, V * 1.2)
     elif modulation_type.lower() == 'manchester':
-      ax.set_ylim(-0.2, 1.2)
+      ax.set_ylim(-0.2, V * 1.2)
 
     if ax is None:
       plt.tight_layout()

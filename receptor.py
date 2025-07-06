@@ -24,15 +24,17 @@ class Receiver:
 # Demodulação (portadora)
 ################################################################################
 
-  def demoduleASK(self, signal, bit_samples=100, treshold=0.1):
+  def demoduleASK(self, signal, bit_samples=100, A=None):
     """
     signal: array de float, contendo o signal modulado ASK
     bit_samples: número de amostras por bit
-    treshold: limiar de decisão da presença de onda
+    A: Amplitude do sinal (float)
     return: lista de bits
     """
     bits = []
-
+    A = self.config.get('A', 1.0) if A is None else A
+    # Limiar de decisão adaptável para a amplitude utilizada
+    threshold = (A**2)/4
     # Percorre o signal em segments de tamanho bit_samples
     for i in range(0, len(signal), bit_samples):
       # Extrai um segment (correspondente a um bit)
@@ -40,7 +42,7 @@ class Receiver:
       # Cálculo de energia média do segment (eleva ao quadrado cada amostra e tira a média)
       energy = np.mean(np.square(segment))
 
-      if energy > treshold:
+      if energy > threshold:
         bits.append(1)
       else:
         bits.append(0)
@@ -122,7 +124,9 @@ class Receiver:
         break
 
       # Estima I e Q por correlação com cosseno e seno
-      # (multiplica por 2 / symbol_samples → normalização da correlação)
+      # A normalização por 2 / symbol_samples serve para:
+      # Corrigir o fator 1/2 que vem naturalmente da energia média das portadoras (cos² e sin²)
+      # E ajustar o somatório para que seja equivalente à integral (dividindo por symbol_samples)
       I = np.dot(s, cos_wave) * 2 / symbol_samples
       Q = -np.dot(s, sin_wave) * 2 / symbol_samples  # sinal negativo por definição da modulação
 
@@ -163,7 +167,7 @@ class Receiver:
   
     return bits
   
-  def manchesterDecoder(self, signal):
+  def manchesterDecoder(self, signal, V=1):
     """
     Decodifica um sinal modulado Manchester
     signal: lista de amplitudes do sinal modulado
@@ -173,10 +177,10 @@ class Receiver:
     # Itera sobre os índices do sinal, de 2 em 2, porque cada bit codificado ocupa dois valores no sinal
     for i in range(0, len(signal), 2):
       # Se a primeira metade está alta (1) e a segunda está baixa (0), representa um bit 1
-      if (signal[i] == 1) and (signal[i + 1] == 0):
+      if (signal[i] == V) and (signal[i + 1] == 0):
         bits.append(1)
       #Se a primeira metade está baixa (0) e a segunda está alta (1), representa um bit 0
-      elif (signal[i] == 0) and (signal[i + 1] == 1):
+      elif (signal[i] == 0) and (signal[i + 1] == V):
         bits.append(0)
   
     return bits
@@ -185,7 +189,6 @@ class Receiver:
     """
     Decodifica um sinal bipolar AMI
     signal: lista de amplitudes (valores como 0, +1 ou -1)
-    V: valor da amplitude (padrão: 1)
     return: lista de bits
     """
     bits = []
@@ -212,6 +215,8 @@ class Receiver:
     """
     i = 0
     recovered_frames = []
+    error_pos = None
+    is_there_error = False
 
     while i < len(bitStream):
       if i + 8 > len(bitStream):
@@ -236,6 +241,7 @@ class Receiver:
             p += 1
         edc_extra = p
 
+      # Pula o header
       start = i + 8
       end = start + frame_size + edc_extra
       frame_with_edc = bitStream[start:end]
@@ -246,10 +252,10 @@ class Receiver:
       elif edc_type == "CRC":
         cleaned = self.checkCRC(frame_with_edc)
       elif edc_type == "Hamming":
-        cleaned = self.checkHamming(frame_with_edc)
+        cleaned,error_pos,is_there_error = self.checkHamming(frame_with_edc)
 
       if cleaned is False:
-        raise ValueError("Erro de detectado")
+        raise ValueError("Erro de desenquadramento detectado")
       
       # Adiciona bits limpos ao resultado
       recovered_frames.extend(cleaned)
@@ -257,7 +263,7 @@ class Receiver:
       # Avança para o próximo quadro
       i = end
 
-    return recovered_frames
+    return recovered_frames, error_pos, is_there_error
   
   def byteInsertionUnframing(self, bitStream, edc_type):
     """
@@ -272,6 +278,8 @@ class Receiver:
 
     i = 0
     n = len(bitStream)
+    error_pos = None
+    is_there_error = False
 
     while i <= (n - 8):
         # Detecta flag de início
@@ -309,7 +317,7 @@ class Receiver:
             elif edc_type == "CRC":
                 cleaned = self.checkCRC(frame_without_padding)
             elif edc_type == "Hamming":
-                cleaned = self.checkHamming(frame_without_padding)
+                cleaned, error_pos, is_there_error = self.checkHamming(frame_without_padding)
 
             if cleaned == False:
                 raise ValueError("Erro de EDC detectado")
@@ -319,7 +327,7 @@ class Receiver:
         else:
             i += 1
 
-    return recovered_data
+    return recovered_data, error_pos, is_there_error
   
   def bitInsertionUnframing(self, bitStream, edc_type):
     """
@@ -333,6 +341,9 @@ class Receiver:
     n = len(bitStream)
     i = 0
     recovered_bits = []
+    error_pos = None
+    is_there_error = False
+
     # Percorre o bitStream garantindo que não ultrapasse o tamanho do stream
     while i <= n - flag_len:
         # Verifica se encontrou uma flag de início
@@ -355,7 +366,7 @@ class Receiver:
                     elif edc_type == "CRC":
                         cleaned_data = self.checkCRC(cleaned_frame)
                     elif edc_type == "Hamming":
-                        cleaned_data = self.checkHamming(cleaned_frame)
+                        cleaned_data, error_pos, is_there_error = self.checkHamming(cleaned_frame)
 
                     if cleaned_data == False:
                         raise ValueError("Erro de EDC detectado")
@@ -369,7 +380,7 @@ class Receiver:
         else:
             i += 1
 
-    return recovered_bits
+    return recovered_bits, error_pos, is_there_error
   
   # Função auxiliar que remove o bit 0 inserido após cinco bits 1 seguidos
   def removeBit0(self, frame_data):
@@ -450,7 +461,7 @@ class Receiver:
     """
     Verifica e corrige um erro de 1 bit usando código de Hamming
     bitStream: lista de bits codificada com Hamming (incluindo paridade)
-    return: lista de bits corrigidos sem bits de paridade
+    return: lista de bits corrigidos sem bits de paridade, booleano indicando se houve erro e sua posição do erro, se houver
     """
     n = len(bitStream)
     # Armazeno o número de bits de paridade
@@ -461,6 +472,8 @@ class Receiver:
 
     # Variável para armazenar a posição do erro caso exista
     error_pos = 0
+    #Variável para armazenar se houve erro ou não
+    is_there_error = False
 
     # Verifica cada bit de paridade
     for i in range(p):
@@ -480,6 +493,7 @@ class Receiver:
       # Salva a posição do erro usando os bits de paridade diferentes de 0
       if parity != 0:
         error_pos += parity_pos
+        is_there_error = True
 
     # Corrige o erro se necessário (error_pos > 0, ou seja, os bits de paridade deram diferente de 0)
     if error_pos != 0 and error_pos <= n:
@@ -492,7 +506,7 @@ class Receiver:
       if not self._is_power_of_two(i):
         corrected_bitStream.append(bitStream[i-1])
 
-    return corrected_bitStream
+    return corrected_bitStream, error_pos, is_there_error
 
   # Função auxiliar que verifica se um número é uma potência de dois
   def _is_power_of_two(self, x):
@@ -507,66 +521,145 @@ class Receiver:
 ################################################################################
 
   def plotBaseband(self, bitStream, modulation_type, V=None, ax=None):
-      V = self.config.get('V', 1.0) if V is None else V
+    V = self.config.get('V', 1.0) if V is None else V
 
-      if modulation_type.lower() == 'nrz':
-          signal = self.transmitter.polarNRZCoder(bitStream, V)
-          time_scale = np.arange(len(signal))
-      elif modulation_type.lower() == 'manchester':
-          signal = self.transmitter.manchesterCoder(bitStream)
-          time_scale = np.arange(0, len(bitStream), 0.5)
-      elif modulation_type.lower() == 'bipolar':
-          signal = self.transmitter.bipolarCoder(bitStream, V)
-          time_scale = np.arange(len(signal))
-      else:
-          raise ValueError("Tipo de modulação inválido")
+    if modulation_type.lower() == 'nrz':
+      signal = self.transmitter.polarNRZCoder(bitStream, V)
+      time_scale = np.arange(len(signal))
+    elif modulation_type.lower() == 'manchester':
+      signal = self.transmitter.manchesterCoder(bitStream, V)
+      time_scale = np.arange(0, len(bitStream), 0.5)
+    elif modulation_type.lower() == 'bipolar':
+      signal = self.transmitter.bipolarCoder(bitStream, V)
+      time_scale = np.arange(len(signal))
+    else:
+      raise ValueError("Tipo de modulação inválido")
 
-      if ax is None:
-          fig, ax = plt.subplots(figsize=(12, 4))
+    if ax is None:
+      fig, ax = plt.subplots(figsize=(12, 4))
 
-      ax.clear()
-      ax.step(time_scale, signal, where='post', linewidth=2)
+    ax.clear()
+    ax.step(time_scale, signal, where='post', linewidth=2)
 
-      if modulation_type.lower() == 'manchester':
-          for i in range(len(bitStream)):
-              ax.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)
+    if modulation_type.lower() == 'manchester':
+      for i in range(len(bitStream)):
+        ax.axvline(x=i + 0.5, color='g', linestyle=':', alpha=0.4)
 
-      ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
-      ax.set_xlabel("Tempo (unidades de bit)")
-      ax.set_ylabel("Amplitude")
-      ax.grid(True)
+    ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    ax.set_xlabel("Tempo (unidades de bit)")
+    ax.set_ylabel("Amplitude")
+    ax.grid(True)
 
-      if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
-          ax.set_ylim(-V * 1.2, V * 1.2)
-      elif modulation_type.lower() == 'manchester':
-          ax.set_ylim(-0.2, 1.2)
+    if modulation_type.lower() == 'nrz' or modulation_type.lower() == 'bipolar':
+      ax.set_ylim(-V * 1.2, V * 1.2)
+    elif modulation_type.lower() == 'manchester':
+      ax.set_ylim(-0.2, V * 1.2)
 
   def plotPassband(self, bitStream, modulation_type, A=None, f=None, f1=None, f2=None, ax=None):
-      A = self.config.get('A', 1.0) if A is None else A
-      f = self.config.get('f', 1000) if f is None else f
-      f1 = self.config.get('f1', 1000) if f1 is None else f1
-      f2 = self.config.get('f2', 2000) if f2 is None else f2
+    A = self.config.get('A', 1.0) if A is None else A
+    f = self.config.get('f', 1000) if f is None else f
+    f1 = self.config.get('f1', 1000) if f1 is None else f1
+    f2 = self.config.get('f2', 2000) if f2 is None else f2
 
-      if modulation_type.lower() == 'ask':
-          signal = self.transmitter.ASK(bitStream, A, f)
-          samples_per_bit = 100
-      elif modulation_type.lower() == 'fsk':
-          signal = self.transmitter.FSK(bitStream, A, f1, f2)
-          samples_per_bit = 100
-      elif modulation_type.lower() == '8-qam':
-          signal = self.transmitter.QAM8(bitStream, A, f)
-          samples_per_bit = 33
-      else:
-          raise ValueError("Tipo de modulação inválido")
+    if modulation_type.lower() == 'ask':
+      signal = self.transmitter.ASK(bitStream, A, f)
+      samples_per_bit = 100
+    elif modulation_type.lower() == 'fsk':
+      signal = self.transmitter.FSK(bitStream, A, f1, f2)
+      samples_per_bit = 100
+    elif modulation_type.lower() == '8-qam':
+      signal = self.transmitter.QAM8(bitStream, A, f)
+      samples_per_bit = 33
+    else:
+      raise ValueError("Tipo de modulação inválido")
 
-      t = np.arange(len(signal)) / samples_per_bit
+    t = np.arange(len(signal)) / samples_per_bit
 
-      if ax is None:
-          fig, ax = plt.subplots(figsize=(12, 4))
+    if ax is None:
+      fig, ax = plt.subplots(figsize=(12, 4))
 
-      ax.clear()
-      ax.plot(t, signal, linewidth=1.5)
-      ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
-      ax.set_xlabel("Tempo (em unidades de bit)")
-      ax.set_ylabel("Amplitude")
-      ax.grid(True, linestyle='--', alpha=0.7)
+    ax.clear()
+    ax.plot(t, signal, linewidth=1.5)
+    ax.set_title(f"Modulação {modulation_type.upper()} - Bits: {bitStream}")
+    ax.set_xlabel("Tempo (em unidades de bit)")
+    ax.set_ylabel("Amplitude")
+    ax.grid(True, linestyle='--', alpha=0.7)
+
+#############################################
+# Ruído
+#############################################
+
+  #Adiciona ruído gaussiano ao sinal recebido, a fim de simular o ruído do ambiente 
+  #Recebe signal(lista de floats), desvio padrão do ruído
+  #Retorna sinal com ruído adicionado (lista de floats)
+  def addAnalogNoise (self, signal, noise_std=None):
+    #Busca valores de config caso não passe nenhum argumento
+    noise_std = self.config.get('noise_std') if noise_std is None else noise_std
+
+    #Converte o sinal para um array numpy de floats, caso não seja
+    if not isinstance(signal, np.ndarray):
+      signal = np.array(signal, dtype=np.float64)
+  
+    noise = np.random.normal(0, noise_std, len(signal)) #(mean, std, quant valores gerados)
+    noisy_signal = signal + noise
+    
+    #Retorna lista de floats, conforme a entrada 
+    return noisy_signal.tolist()
+
+  #Flipa UM bit de posição aleatória, com certa probabilidade
+  #Recebe o sinal (lista de inteiros), tensão(float) e probabilidade de flipar o bit(float entre 0.0 e 1.0)
+  #Retorna o sinal com um bit possivelmente flipado
+  def addDigitalNoise(self, signal, V=None, bit_error_prob=None, modulation=None):
+    #Busca valor de config caso não passe nenhum argumento
+    V = self.config.get('V') if V is None else V
+    bit_error_prob = self.config.get('bit_error_prob') if bit_error_prob is None else bit_error_prob
+
+    #Verifica se bit_error_prob é probabilidade entre 0 e 1
+    if not (0.0 <= bit_error_prob <= 1.0):
+      raise ValueError("bit_error_prob deve estar em [0,1]")
+
+    #Converte para numpy array se não for
+    if not isinstance(signal, np.ndarray):
+      signal = np.array(signal)
+
+    #Cria cópia para não modificar o original
+    noisy_signal = signal.copy()
+
+    #Decide se vai ocorrer erro. np.random.random() já gera valor entre 0 e 1 por padrão
+    if np.random.random() < bit_error_prob:
+      #Escolhe uma posição aleatória
+      error_pos = np.random.randint(0, len(signal))
+      #Flipa o bit (inverte a polaridade)
+      if modulation == "NRZ":
+        #+V representa 1, -V representa 0
+        noisy_signal[error_pos] = -noisy_signal[error_pos]
+
+      elif modulation == "Manchester":
+        # Para flipar 1 bit no manchester é preciso flipar duas posições do sinal
+        # Caso a posição do erro seja par, é preciso flipar a próxima posição também
+        if error_pos % 2 == 0:
+          if noisy_signal[error_pos] == V:
+            noisy_signal[error_pos] = 0
+            noisy_signal[error_pos+1] = V
+          else:
+            noisy_signal[error_pos] = V
+            noisy_signal[error_pos+1] = 0
+
+        # Caso seja ímpar, é preciso flipar a posição anterior também
+        else:
+          if noisy_signal[error_pos] == V:
+            noisy_signal[error_pos] = 0
+            noisy_signal[error_pos-1] = V
+          else:
+            noisy_signal[error_pos] = V
+            noisy_signal[error_pos-1] = 0
+
+      elif modulation == "Bipolar":
+        #0 -> 0 ; 1 -> +V ou -V 
+        if noisy_signal[error_pos] == 0:
+          noisy_signal[error_pos] = V
+        else:
+          noisy_signal[error_pos] = 0
+
+    
+    return noisy_signal.tolist()
