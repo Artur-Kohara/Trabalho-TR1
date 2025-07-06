@@ -124,7 +124,9 @@ class Receiver:
         break
 
       # Estima I e Q por correlação com cosseno e seno
-      # (multiplica por 2 / symbol_samples → normalização da correlação)
+      # A normalização por 2 / symbol_samples serve para:
+      # Corrigir o fator 1/2 que vem naturalmente da energia média das portadoras (cos² e sin²)
+      # E ajustar o somatório para que seja equivalente à integral (dividindo por symbol_samples)
       I = np.dot(s, cos_wave) * 2 / symbol_samples
       Q = -np.dot(s, sin_wave) * 2 / symbol_samples  # sinal negativo por definição da modulação
 
@@ -187,7 +189,6 @@ class Receiver:
     """
     Decodifica um sinal bipolar AMI
     signal: lista de amplitudes (valores como 0, +1 ou -1)
-    V: valor da amplitude (padrão: 1)
     return: lista de bits
     """
     bits = []
@@ -240,6 +241,7 @@ class Receiver:
             p += 1
         edc_extra = p
 
+      # Pula o header
       start = i + 8
       end = start + frame_size + edc_extra
       frame_with_edc = bitStream[start:end]
